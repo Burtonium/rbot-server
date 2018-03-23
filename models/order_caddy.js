@@ -2,6 +2,11 @@ const assert = require('assert');
 const { Model } = require('../database');
 
 class OrderCaddy extends Model {
+  // Amount of deviation allowed before updating orders
+  static get referenceHysteresis() {
+    return 0.5;
+  }
+
   static get tableName() {
     return 'order_caddies';
   }
@@ -10,12 +15,22 @@ class OrderCaddy extends Model {
     return true;
   }
 
-  update() {
+  async updateTriggerOrders() {
+    const promises = this.triggerMarkets.map(async (tm) => {
+      const trigger = this.triggers.find(t => t.market.symbol === tm.symbol);
+      const referencePrice = await this.fetchReferencePrice();
+      if (trigger) {
 
+      } else {
+        // create trigger
+      }
+    })
+    return Promise.all(promises);
   }
 
-  fetchTriggerOrderStatuses() {
-    this.triggerOrders.filter(o => o.status === 'open').forEach((o) => { o.update(); });
+  async fetchReferencePrice() {
+    const tickers = await Promise.all(this.referenceMarkets.map(rm => rm.fetchTicker()));
+    console.log('Tickers', tickers);
   }
 
   static get relationMappings() {
@@ -38,7 +53,6 @@ class OrderCaddy extends Model {
         join: {
           from: 'order_caddies.id',
           through: {
-            modelClass: `${__dirname}/trigger_market`,
             extra: ['side'],
             from: 'order_caddies_trigger_markets.orderCaddiesId',
             to: 'order_caddies_trigger_markets.marketId'
@@ -46,6 +60,26 @@ class OrderCaddy extends Model {
           to: 'markets.id'
         }
       },
+      triggers: {
+        relation: Model.ManyToManyRelation,
+        modelClass: `${__dirname}/order`,
+        join: {
+          from: 'order_caddies.id',
+          through: {
+              from: 'order_caddies_triggers.orderCaddiesId',
+              to: 'order_caddies_triggers.orderId'
+          },
+          to: 'orders.id'
+        }
+      },
+      pair: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: `${__dirname}/currency_pair`,
+        join: {
+          from: 'order_caddies.currencyPairId',
+          to: 'currency_pairs.id'
+        }
+      }
     };
   }
 }

@@ -11,15 +11,15 @@ class Market extends Model {
 
   static get relationMappings() {
     return {
-        pair: {
-          relation: Model.BelongsToOneRelation,
-          modelClass: `${__dirname}/currency_pair`,
-          join: {
-            from: 'markets.currencyPairId',
-            to: 'currency_pairs.id'
-          }
-        },
-        exchange: {
+      pair: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: `${__dirname}/currency_pair`,
+        join: {
+          from: 'markets.currencyPairId',
+          to: 'currency_pairs.id'
+        }
+      },
+      exchange: {
         relation: Model.BelongsToOneRelation,
         modelClass: `${__dirname}/exchange`,
         join: {
@@ -28,6 +28,17 @@ class Market extends Model {
         },
       }
     };
+  }
+
+  fetchTicker() {
+    return this.query().select('tickers.*')
+      .join('markets', 'markets.id', 'tickers.marketId')
+      .orderBy('created_at', 'desc')
+      .first();
+  }
+
+  fetchOrderBook() {
+    return this.exchange.fetchOrderBook(this.symbol, 10, );
   }
 }
 

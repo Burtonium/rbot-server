@@ -1,7 +1,7 @@
 exports.up = knex => knex.schema.createTable('order_caddies_triggers', (table) => {
     table.bigIncrements().primary();
-    table.bigInteger('order_caddies_trigger_markets_id').references('id').inTable('order_caddies_trigger_markets').index();
-    table.bigInteger('order_id').references('id').inTable('orders').index();
+    table.bigInteger('order_caddies_id').unsigned().references('id').inTable('order_caddies').index();
+    table.bigInteger('order_id').unsigned().references('id').inTable('orders').unique();
   });
 
 exports.down = knex =>  knex.schema.dropTableIfExists('order_caddies_triggers');

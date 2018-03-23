@@ -1,5 +1,6 @@
 exports.up = knex => knex.schema.createTable('orders', (table) => {
     table.bigIncrements().primary();
+    table.string('order_id');
     table.bigInteger('user_id').unsigned().references('id').inTable('users');
     table.bigInteger('market_id').unsigned().references('id').inTable('markets').index();
     table.enum('status', ['open', 'closed', 'error']).notNullable().defaultTo('open');

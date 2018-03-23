@@ -14,6 +14,19 @@ class User extends Password(Model) {
   toJSON() {
     return _.pick(this, ['id', 'username']);
   }
+
+  static get relationMappings() {
+    return {
+      arbCycles: {
+        relation: Model.HasManyRelation,
+        modelClass: `${__dirname}/arb_cycle`,
+        join: {
+          from: 'users.id',
+          to: 'arb_cycles.userId'
+        }
+      }
+    };
+  }
 }
 
 module.exports = User;

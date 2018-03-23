@@ -19,7 +19,7 @@ class CurrencyPair extends Model {
 
   static get relationMappings() {
     return {
-      market: {
+      markets: {
         relation: Model.HasManyRelation,
         modelClass: `${__dirname}/market`,
         join: {

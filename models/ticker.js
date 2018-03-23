@@ -1,12 +1,12 @@
 const { Model } = require('../database');
 
-class Order extends Model {
+class Ticker extends Model {
   static get tableName() {
-    return 'orders';
+    return 'tickers';
   }
 
   static get timestamp() {
-    return true;
+    return false;
   }
 
   static get relationMappings() {
@@ -15,16 +15,13 @@ class Order extends Model {
         relation: Model.BelongsToOneRelation,
         modelClass: `${__dirname}/market`,
         join: {
-          from: 'orders.marketId',
+          from: 'tickers.marketId',
           to: 'markets.id'
         }
       }
     };
-  }
 
-  update() {
-    this.market.exchange;
   }
 }
 
-module.exports = Order;
+module.exports = Ticker;
