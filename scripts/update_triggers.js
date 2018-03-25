@@ -1,13 +1,13 @@
+require('dotenv').config();
 const OrderCaddy = require('../models/order_caddy');
 
 (async () => {
   const activeCaddies = await OrderCaddy.query()
   .where({ active: true })
-  .eager('[triggers.market, triggerMarkets, referenceMarkets.exchange]')
-  .modifyEager('triggers', query => {
-    query.where('status', '=', 'open');
-  });
+  .eager('[triggerMarkets.exchange, referenceMarkets.exchange]');
 
-  activeCaddies.map(c => c.updateTriggerOrders());
-
-})().catch(e => console.log(e));
+  await Promise.all(activeCaddies.map(c => c.updateTriggerOrders()));
+})().catch(e => {
+  console.log(e);
+  process.exit(1);
+});

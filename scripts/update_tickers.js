@@ -37,12 +37,12 @@ const individualTickersOnly = [
 
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
+
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
     tickers = await exchange.ccxt.fetchTickers();
     Object.values(tickers).forEach(t => tickerCallback(t.symbol, t));
   } else {
     const markets = exchange.markets;
-
     tickers = {};
 
     const promises = markets.map(async (market, i) => {
@@ -58,23 +58,26 @@ const fetchTickers = async (exchange, tickerCallback) => {
 const insertTickers = async () => {
   const exchanges = await Exchange.query().eager('markets');
 
-  const promises = exchanges.filter(e => exclusiveFilter.includes(e.ccxtId)).map(async e => {
-    await e.ccxt.loadMarkets();
+  const promises = exchanges
+    .filter(e => !exclusiveFilter.length || exclusiveFilter.includes(e.ccxtId))
+    .filter(e => !filtered.includes(e.ccxtId))
+    .map(async e => {
+      await e.ccxt.loadMarkets();
 
-    await fetchTickers(e, async(symbol, ticker) => {
-      const market = e.markets.find(m => m.symbol === symbol);
-      if (!market) {
-        return false;
-      }
+      await fetchTickers(e, async(symbol, ticker) => {
+        const market = e.markets.find(m => m.symbol === symbol);
+        if (!market) {
+          return false;
+        }
 
-      const insert = _.pick(ticker, ['ask', 'askVolume', 'bid', 'bidVolume', 'timestamp']);
+        const insert = _.pick(ticker, ['ask', 'askVolume', 'bid', 'bidVolume', 'timestamp']);
 
-      insert.timestamp = new Date(insert.timestamp);
+        insert.timestamp = new Date(insert.timestamp);
 
-      insert.marketId = market.id;
-      return Ticker.query().insert(insert);
+        insert.marketId = market.id;
+        return Ticker.query().insert(insert);
+      });
     });
-  });
   return Promise.all(promises).then(() => console.log('DONE!'));
 };
 

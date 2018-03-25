@@ -1,8 +1,11 @@
 const { Model } = require('../database');
 const ccxt = require('ccxt');
 const _ = require('lodash');
-const proxies = (process.env.PROXIES || '').split(',').map(p => `http://${p}:8080/`);
+const proxies = (process.env.PROXIES || '').split(',').filter(p => !!p).map(p => `http://${p}:8080/`);
 const store = require('node-persist');
+const assert = require('assert');
+const { precisionRound } = require('../utils');
+
 store.init();
 
 class Exchange extends Model {
@@ -53,7 +56,6 @@ class Exchange extends Model {
       const index = store.getItemSync(this.ccxtId) || 0;
       this.instance.proxy = proxies[index % proxies.length];
       store.setItemSync(this.ccxtId, index + 1);
-      console.log(this.instance.name, 'using', this.instance.proxy);
     }
   }
 
@@ -61,8 +63,19 @@ class Exchange extends Model {
     return _.omit(json, ['ccxt', 'instance']);
   }
 
-  fetchOrderInfo(orderId) {
+  async createOrder(order) {
+    assert(order.symbol
+      && ['buy', 'sell'].includes(order.side)
+      && ['limit', 'market'].includes(order.type)
+      && order.amount
+      && order.limitPrice, 'Order invalid');
 
+    const response = await this.ccxt.createOrder(order.symbol, order.type, order.side,
+      order.amount, precisionRound(order.limitPrice, 6));
+
+    order.timestamp = new Date();
+    order.orderId = response.id;
+    return order;
   }
 }
 

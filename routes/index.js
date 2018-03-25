@@ -9,4 +9,5 @@ router.get('/caddies', caddies.fetchAll);
 router.post('/caddies', auth.verifyToken, caddies.create);
 router.get('/exchanges', exchanges.fetchAll);
 router.get('/pairs', pairs.fetchAll);
+
 module.exports = router;
