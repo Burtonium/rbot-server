@@ -11,6 +11,7 @@ const _ = require('lodash');
     const e = ccxt.exchanges[i];
     console.log(`Loading ${e} markets (${i + 1} of ${ccxt.exchanges.length})`);
     const exchange = new ccxt[e]();
+
     try {
       await exchange.loadMarkets(true);
 
@@ -21,7 +22,7 @@ const _ = require('lodash');
         // Do nothing
       }
 
-      const record = await Exchange.query().select('id').where({ ccxt_id: e}).first();
+      const record = await Exchange.query().select('id').where({ ccxtId: e }).first();
       exchangeId = record.id;
 
       if (exchangeId) {

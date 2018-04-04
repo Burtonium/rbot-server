@@ -45,7 +45,7 @@ const fetchTickers = async (exchange, tickerCallback) => {
     const markets = exchange.markets;
     tickers = {};
 
-    const promises = markets.map(async (market, i) => {
+    const promises = markets.map(async (market) => {
       tickers[market.symbol] = await exchange.ccxt.fetchTicker(market.symbol); // eslint-disable-line
       return tickerCallback && tickerCallback(market.symbol, tickers[market.symbol]);
     });
@@ -78,7 +78,7 @@ const insertTickers = async () => {
         return Ticker.query().insert(insert);
       });
     });
-  return Promise.all(promises).then(() => console.log('DONE!'));
+  return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };
 
-setInterval(insertTickers, 3000);
+setInterval(insertTickers, 4500);

@@ -6,7 +6,7 @@ class Trade extends Model {
   }
 
   static get timestamp() {
-    return true;
+    return false;
   }
 }
 

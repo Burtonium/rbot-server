@@ -20,3 +20,13 @@ module.exports.create = async (req, res) => {
 
   res.status(200).json({ success: true });
 };
+
+module.exports.delete = async (req, res) => {
+  const caddyId = req.params.caddyId;
+  try {
+    await OrderCaddy.query().delete().where({ id: caddyId });
+  } catch (error) {
+    return res.status(500).json({ success: false });
+  }
+  return res.status(200).json({ success: true });
+};

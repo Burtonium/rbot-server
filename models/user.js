@@ -24,6 +24,14 @@ class User extends Password(Model) {
           from: 'users.id',
           to: 'arb_cycles.userId'
         }
+      },
+      exchangeSettings: {
+        relation: Model.HasManyRelation,
+        modelClass: `${__dirname}/exchange_settings`,
+        join: {
+          from: 'users.id',
+          to: 'exchange_settings.userId'
+        }
       }
     };
   }

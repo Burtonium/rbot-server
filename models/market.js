@@ -10,6 +10,13 @@ class Market extends Model {
     return false;
   }
 
+  static get namedFilters() {
+    return {
+      latest:
+        query => query.orderBy('timestamp', 'desc').limit(1).first()
+    };
+  }
+
   static get relationMappings() {
     return {
       pair: {
@@ -47,8 +54,16 @@ class Market extends Model {
     };
   }
 
-  fetchTicker() {
-    return this.$relatedQuery('tickers').orderBy('timestamp', 'desc').limit(1).first();
+  async fetchTicker() {
+    const ticker = await this.$relatedQuery('tickers')
+      .eager('market.[exchange,pair.quoteCurrency]')
+      .orderBy('timestamp', 'desc')
+      .limit(1)
+      .first();
+    if (new Date() - ticker.timestamp > 5 * 60 * 1000) {
+      throw new Error('Outdated tickers. Make sure you are updating your prices');
+    }
+    return ticker;
   }
 
   fetchOrderBook() {

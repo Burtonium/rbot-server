@@ -3,7 +3,7 @@ exports.up = knex => knex.schema.createTable('trades', (table) => {
     table.bigInteger('order_id').unsigned().references('id').inTable('orders');
     table.decimal('filled', 30, 15).notNullable();
     table.decimal('price', 30, 15).notNullable();
-    table.timestamps();
+    table.dateTime('timestamp').notNullable().index();
   });
 
 exports.down = knex =>  knex.schema.dropTableIfExists('trades');

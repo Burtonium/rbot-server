@@ -1,16 +1,11 @@
-const assert = require('assert');
 const { Model } = require('../database');
-const Order = require('./order');
 const _ = require('lodash');
-
-const percentDifference = (val1, val2) => {
-  return Math.abs(val1 - val2) / ((val1 + val2) / 2);
-}
+const { percentDifference } = require('../utils');
 
 class OrderCaddy extends Model {
-  // Amount of deviation allowed before updating orders
+  // Amount of deviation allowed before orders renewal
   static get referenceHysteresis() {
-    return 0.5;
+    return 0.25;
   }
 
   static get tableName() {
@@ -22,48 +17,90 @@ class OrderCaddy extends Model {
   }
 
   async updateTriggerOrders() {
-    const openTriggers = await this.fetchOpenTriggers();
-    const promises = this.triggerMarkets.map(async (tm) => {
-      const rt = await this.fetchReferenceTickers();
-      // fetch lowest reference ask price
-      const minAsk = rt.reduce((min, t) => t.ask < min.ask ? t : min, rt[0]);
-      // fetch highest reference bid price
-      const maxBid = rt.reduce((max, t) => t.bid > max.bid ? t : max, rt[0]);
-      const targetBuyPrice = minAsk.ask *= 1 - (this.minProfitabilityPercent / 100);
-      const targetSellPrice = maxBid.bid *= 1 + (this.minProfitabilityPercent / 100);
-      const trigger = openTriggers.find(t => t.market.symbol === tm.symbol);
+    const { exchangeSettings } = await this.$relatedQuery('user').eager('exchangeSettings');
+
+    const openOrders = await this.fetchOpenOrders();
+
+    // update all open orders information
+    await Promise.all(openOrders.map(t => {
+      const exchange = t.market.exchange;
+      const settings = exchangeSettings.find(s => s.exchangeId === exchange.id);
+      return t.updateInfo(settings);
+    }));
+
+    const rt = await this.fetchReferenceTickers();
+
+    const filledTriggers = (await this.$relatedQuery('triggers').eager('trades')).filter(t => t.filled > 0 && t.status !== 'canceled');
+    try {
+      await this.completeArbitrageForFilledTriggers(filledTriggers, this.userId, rt);
+    } catch (error) {
+      console.log(error.message);
+      await this.cancelAllOrders();
+      return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
+    }
+
+    // renew triggers or create them if they're not there
+    return Promise.all(this.triggerMarkets.map( async (tm) => {
+      const settings =  exchangeSettings.find(s => s.exchangeId === tm.exchange.id);
+      tm.exchange.userSettings = settings;
+
+      const trigger = openOrders.find(t => t.market.id === tm.id && t.side === tm.side);
 
       if (trigger) {
         if (trigger.side === 'buy'
-          && percentDifference(trigger.price, targetBuyPrice) > OrderCaddy.referenceHysteresis) {
-          // renew trigger
+          && percentDifference(trigger.limitPrice, rt.targetBuyPrice) > OrderCaddy.referenceHysteresis) {
+          const { id } = await trigger.renew(rt.targetBuyPrice, settings);
+          await this.$relatedQuery('triggers').relate(id);
         } else if (trigger.side === 'sell'
-          && percentDifference(trigger.price, targetSellPrice) > OrderCaddy.referenceHysteresis) {
-          // renew trigger
+          && percentDifference(trigger.limitPrice, rt.targetSellPrice) > OrderCaddy.referenceHysteresis) {
+          const { id } = await trigger.renew(rt.targetSellPrice, settings);
+          await this.$relatedQuery('triggers').relate(id);
         }
       } else {
+        let limitPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
+
         await this.createTrigger(tm, {
           symbol: tm.symbol,
           side: tm.side,
           type: 'limit',
           amount: tm.amount,
-          limitPrice: tm.side === 'buy' ? targetBuyPrice : targetSellPrice
+          limitPrice
         });
       }
-    });
-    return Promise.all(promises);
+    }));
   }
 
-  fetchReferenceTickers() {
-    return Promise.all(this.referenceMarkets.map(rm => rm.fetchTicker()));
+  async fetchReferenceTickers() {
+    const tickers = await Promise.all(this.referenceMarkets.map(rm => rm.fetchTicker()));
+
+    // fetch lowest reference ask price
+    const minAsk = tickers.reduce((min, t) => t.ask < min.ask ? t : min, tickers[0]);
+    // fetch highest reference bid price
+    const maxBid = tickers.reduce((max, t) => t.bid > max.bid ? t : max, tickers[0]);
+
+    let targetBuyPrice = minAsk.ask *= 1 - (this.minProfitabilityPercent / 100);
+    let targetSellPrice = maxBid.bid *= 1 + (this.minProfitabilityPercent / 100);
+
+    if (minAsk.market.pair.quoteCurrency.type === 'fiat') { // TODO replace by currency.format()
+      targetBuyPrice = targetBuyPrice.toFixed(2);
+    }
+    if (maxBid.market.pair.quoteCurrency.type === 'fiat') { // TODO replace by currency.format()
+      targetSellPrice = targetSellPrice.toFixed(2);
+    }
+
+    return { minAsk, maxBid, targetBuyPrice, targetSellPrice };
   }
 
-  fetchOpenTriggers() {
-    return this.$relatedQuery('triggers').eager('market').where('status', '=', 'open');
+  async fetchOpenOrders() {
+    return _.flatten(await this.$relatedQuery('triggers')
+      .eager('[market.exchange.settings,arbCycle.orders.market.exchange.settings]')
+      .modifyEager('market.exchange.settings', query => query.where('userId', this.userId))
+      .modifyEager('arbCycle.orders.market.exchange.settings', query => query.where('userId', this.userId))
+      .map(o => o.arbCycle ? o.arbCycle.orders : [o])).filter(o => o.status === 'open');
   }
 
   async createTrigger(market, order) {
-    const exchange = market.exchange || await market.$relatedQuery('exchange');
+    const exchange = market.exchange;
     const created = await exchange.createOrder(order);
     return this.$relatedQuery('triggers').insert({
       userId: this.userId,
@@ -71,6 +108,22 @@ class OrderCaddy extends Model {
       status: 'open',
       ..._.pick(created, [ 'orderId', 'type', 'side', 'amount', 'limitPrice'])
     });
+  }
+
+  async completeArbitrageForFilledTriggers(triggers, userId, tickers) {
+    for (let i = 0; i < triggers.length; i++) {
+      const t = triggers[i];
+
+      let arbCycle = await t.$relatedQuery('arbCycle').eager('orders');
+      if (!arbCycle) {
+        arbCycle = await t.$relatedQuery('arbCycle').insert({ userId });
+      }
+      await arbCycle.placeReferenceOrder(tickers);
+    }
+  }
+
+  async cancelAllOrders() {
+    return Promise.all(this.triggers.map(t => t.cancel()));
   }
 
   static get relationMappings() {
@@ -118,6 +171,14 @@ class OrderCaddy extends Model {
         join: {
           from: 'order_caddies.currencyPairId',
           to: 'currency_pairs.id'
+        }
+      },
+      user: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: `${__dirname}/user`,
+        join: {
+          from: 'order_caddies.userId',
+          to: 'users.id'
         }
       }
     };

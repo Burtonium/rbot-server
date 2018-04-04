@@ -26,7 +26,23 @@ class CurrencyPair extends Model {
           from: 'currency_pairs.id',
           to: 'markets.currencyPairId'
         }
-      }
+      },
+      baseCurrency: {
+        relation: Model.HasOneRelation,
+        modelClass: `${__dirname}/currency`,
+          join: {
+            from: 'currency_pairs.base',
+            to: 'currencies.code'
+          }
+      },
+      quoteCurrency: {
+        relation: Model.HasOneRelation,
+        modelClass: `${__dirname}/currency`,
+          join: {
+            from: 'currency_pairs.quote',
+            to: 'currencies.code'
+          }
+      },
     };
   }
 }

@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.2",
-    "ccxt": "^1.11.91",
+    "ccxt": "git+https://github.com/Burtonium/ccxt.git#independent-reserve-trades",
     "cors": "^2.8.4",
     "dotenv": "^5.0.0",
     "express": "^4.16.2",
@@ -24,14 +24,14 @@
     "lodash": "^4.17.5",
     "morgan": "^1.9.0",
     "node-persist": "^2.1.0",
-    "objection": "^1.0.0",
+    "objection": "^1.0.1",
     "objection-password": "^1.0.0",
     "objection-timestamp": "^1.1.0",
     "pg": "^7.4.1",
     "promisify-node": "^0.4.0"
   },
   "devDependencies": {
-    "eslint": "^4.18.2",
+    "eslint": "^4.19.1",
     "eslint-config-airbnb-base": "^12.1.0",
     "eslint-plugin-import": "^2.9.0",
     "nodemon": "^1.17.2"

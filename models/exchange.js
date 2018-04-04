@@ -4,7 +4,7 @@ const _ = require('lodash');
 const proxies = (process.env.PROXIES || '').split(',').filter(p => !!p).map(p => `http://${p}:8080/`);
 const store = require('node-persist');
 const assert = require('assert');
-const { precisionRound } = require('../utils');
+const { precisionRound, wait } = require('../utils');
 
 store.init();
 
@@ -26,6 +26,14 @@ class Exchange extends Model {
           from: 'exchanges.id',
           to: 'markets.exchangeId'
         }
+      },
+      settings: {
+        relation: Model.HasManyRelation,
+        modelClass: `${__dirname}/exchange_settings`,
+        join: {
+          from: 'exchanges.id',
+          to: 'exchange_settings.exchangeId'
+        }
       }
     };
   }
@@ -36,14 +44,38 @@ class Exchange extends Model {
     return this.instance;
   }
 
-  set ccxt(instance) {
-    this.instance = instance;
-  }
-
   lazyLoadCcxt() {
     if (!this.instance) {
-      this.instance =  new ccxt[this.ccxtId]();
+      const ccxtId = this.ccxtId;
+      // wrap in a proxy and stagger if needed (for example independentreserve)
+      this.instance =  new Proxy(new ccxt[this.ccxtId]({ verbose: false }), {
+        get(obj, prop) {
+          let stagger = null;
+          if (/private/.exec(prop) && obj[prop]) {
+            let nextCallAllowedAt = store.getItemSync(ccxtId + '-privatecall');
+            const now = new Date().getTime();
+            nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1000 : now + 1000;
+            store.setItemSync(ccxtId + '-privatecall', nextCallAllowedAt);
+            if (nextCallAllowedAt) {
+              stagger = async(...args) => {
+                const millisToWait = new Date(nextCallAllowedAt).getTime() - new Date().getTime();
+                await wait(millisToWait > 0 ? millisToWait : 0);
+                return obj[prop](...args);
+              }
+            }
+          }
+          return stagger || obj[prop];
+        }
+      });
     }
+  }
+
+  set userSettings(settings) {
+    this.lazyLoadCcxt();
+    this.instance.apiKey = settings.key;
+    this.instance.secret = settings.secret;
+    this.instance.uid = settings.uid;
+    this.instance.password = settings.password;
   }
 
   get has() {
@@ -60,18 +92,17 @@ class Exchange extends Model {
   }
 
   $formatJson(json) {
-    return _.omit(json, ['ccxt', 'instance']);
+    return _.omit(json, ['ccxt', 'instance', 'userSettings']);
   }
 
   async createOrder(order) {
     assert(order.symbol
       && ['buy', 'sell'].includes(order.side)
       && ['limit', 'market'].includes(order.type)
-      && order.amount
-      && order.limitPrice, 'Order invalid');
+      && order.amount,  'Order invalid');
 
     const response = await this.ccxt.createOrder(order.symbol, order.type, order.side,
-      order.amount, precisionRound(order.limitPrice, 6));
+      order.amount, order.limitPrice && precisionRound(order.limitPrice, 6));
 
     order.timestamp = new Date();
     order.orderId = response.id;
