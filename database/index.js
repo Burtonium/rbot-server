@@ -1,4 +1,4 @@
-const config = require('../knexfile.js')[process.env.NODE_ENV || 'development'];
+const config = require('../knexfile.js');
 const knex = require('knex')(config);
 const objection = require('objection');
 const objectionTimestamp = require('objection-timestamp');
