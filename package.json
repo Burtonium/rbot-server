@@ -7,7 +7,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js --exec 'npm run lint && node'",
-    "lint": "eslint index.js"
+    "lint": "eslint index.js",
+    "update-triggers": "node scripts/update_triggers",
+    "update-markets": "node scripts/update_markets",
+    "update-tickers": "node scripts/update_tickers"
   },
   "author": "Matt Burton matt@burtonize.me",
   "license": "ISC",
