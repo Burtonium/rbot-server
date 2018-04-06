@@ -10,13 +10,6 @@ class Market extends Model {
     return false;
   }
 
-  static get namedFilters() {
-    return {
-      latest:
-        query => query.orderBy('timestamp', 'desc').limit(1).first()
-    };
-  }
-
   static get relationMappings() {
     return {
       pair: {

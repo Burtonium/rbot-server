@@ -1,7 +1,6 @@
 const promisify = require('promisify-node');
 const jwt = promisify('jsonwebtoken');
 const User = require('../models/user');
-const assert = require('assert');
 
 class AuthenticationError extends Error {
   get status() {
@@ -11,7 +10,6 @@ class AuthenticationError extends Error {
 
 module.exports.verifyToken = async (req, res, next) => {
   const token = req.body.token || req.query.token || req.headers['x-access-token'];
-
   let decoded;
   try {
     decoded = await jwt.verify(token, process.env.JWT_SECRET);

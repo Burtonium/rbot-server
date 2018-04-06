@@ -67,6 +67,7 @@ class ArbCycle extends Model {
     const { exchangeSettings } = await this.$relatedQuery('user')
       .eager('exchangeSettings')
       .modifyEager('exchangeSettings', query => query.where('exchangeId', exchange.id));
+
     exchange.userSettings = exchangeSettings && exchangeSettings[0];
 
     const created = await exchange.createOrder({
@@ -76,12 +77,14 @@ class ArbCycle extends Model {
       side
     });
 
-    return this.$relatedQuery('orders').insert({
+    const order = await this.$relatedQuery('orders').insert({
       userId: this.userId,
       marketId: ticker.market.id,
       status: 'open',
       ..._.pick(created, [ 'orderId', 'type', 'side', 'amount'])
     });
+
+    return order.updateInfo();
   }
 }
 

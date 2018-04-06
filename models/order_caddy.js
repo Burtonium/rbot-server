@@ -5,7 +5,7 @@ const { percentDifference } = require('../utils');
 class OrderCaddy extends Model {
   // Amount of deviation allowed before orders renewal
   static get referenceHysteresis() {
-    return 0.25;
+    return 0.20;
   }
 
   static get tableName() {
@@ -31,10 +31,11 @@ class OrderCaddy extends Model {
     const rt = await this.fetchReferenceTickers();
 
     const filledTriggers = (await this.$relatedQuery('triggers').eager('trades')).filter(t => t.filled > 0 && t.status !== 'canceled');
+
     try {
-      await this.completeArbitrageForFilledTriggers(filledTriggers, this.userId, rt);
+      await this.completeArbitrageForFilledTriggers(filledTriggers, exchangeSettings, rt);
     } catch (error) {
-      console.log(error.message);
+      console.log(error);
       await this.cancelAllOrders();
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }
@@ -100,8 +101,14 @@ class OrderCaddy extends Model {
   }
 
   async createTrigger(market, order) {
+    let created = {};
     const exchange = market.exchange;
-    const created = await exchange.createOrder(order);
+    try {
+      created = await exchange.createOrder(order);
+    } catch (error) {
+      await this.cancelAllOrders();
+      return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
+    }
     return this.$relatedQuery('triggers').insert({
       userId: this.userId,
       marketId: market.id,
@@ -110,20 +117,20 @@ class OrderCaddy extends Model {
     });
   }
 
-  async completeArbitrageForFilledTriggers(triggers, userId, tickers) {
+  async completeArbitrageForFilledTriggers(triggers, settings, tickers) {
     for (let i = 0; i < triggers.length; i++) {
       const t = triggers[i];
 
       let arbCycle = await t.$relatedQuery('arbCycle').eager('orders');
       if (!arbCycle) {
-        arbCycle = await t.$relatedQuery('arbCycle').insert({ userId });
+        arbCycle = await t.$relatedQuery('arbCycle').insert({ userId: this.userId });
       }
-      await arbCycle.placeReferenceOrder(tickers);
+      await arbCycle.placeReferenceOrder(tickers, settings);
     }
   }
 
   async cancelAllOrders() {
-    return Promise.all(this.triggers.map(t => t.cancel()));
+    return Promise.all((this.triggers|| await this.$relatedQuery('triggers')).map(t => t.cancel()));
   }
 
   static get relationMappings() {

@@ -11,23 +11,35 @@ class Order extends Model {
   }
 
   static get virtualAttributes() {
-    return ['filled'];
+    return ['filled', 'averagePrice'];
   }
 
   get filled() {
     return (this.trades || []).map(t => t.filled).reduce((a, b) => a + b, 0);
   }
 
-  async updateInfo(settings) {
+  get averagePrice() {
+    const trueCost = (this.trades || []).reduce((acc, cur) => {
+      return acc + (cur.filled * cur.price);
+    }, 0);
+    return trueCost / this.filled;
+  }
+
+  async updateInfo() {
     const market = await this.$relatedQuery('market').eager('exchange').first();
+    const { exchangeSettings } = await this.$relatedQuery('user').eager('exchangeSettings');
+    const settings = exchangeSettings.find(s => s.exchangeId === market.exchangeId);
     market.exchange.userSettings = settings;
+
     let info = null;
     try {
       info = await market.exchange.ccxt.fetchOrder(this.orderId);
       await Order.query().patch({ status: info.status }).where({ id: this.id });
     } catch (error) {
+      console.log('Updating error:', error);
       return Order.query().patch({ status: 'error' }).where({ id: this.id });
     }
+
     const trades = await market.exchange.ccxt.fetchMyTrades(market.symbol);
     const filtered = trades.filter(t => t.order === this.orderId).map(t => ({
         filled: t.amount,
@@ -35,6 +47,9 @@ class Order extends Model {
         timestamp: t.datetime
       })
     );
+    if (filtered.length > 0) {
+      console.log('Inserting trades');
+    }
     // TODO: check for new trades here
     await this.$relatedQuery('trades').delete();
     await this.$relatedQuery('trades').insert(filtered);
@@ -46,7 +61,10 @@ class Order extends Model {
   }
 
   async cancel() {
-    await (this.exchange || this.$relatedQuery('exchange')).ccxt.cancelOrder(this.id);
+    const { exchangeSettings } = await this.$relatedQuery('user').eager('exchangeSettings');
+    const exchange = await (this.exchange || await this.$relatedQuery('exchange'));
+    exchange.userSettings = exchangeSettings.find(s => s.exchangeId === exchange.id);
+    await exchange.ccxt.cancelOrder(this.id);
     return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
   }
 
@@ -91,12 +109,20 @@ class Order extends Model {
           },
           to: 'arb_cycles.id'
         }
+      },
+      user: {
+        relation: Model.BelongsToOneRelation,
+        modelClass: `${__dirname}/user`,
+        join: {
+          from: 'orders.userId',
+          to: 'users.id'
+        }
       }
     };
   }
 
   async renew(targetPrice, settings) {
-    console.log('Renewing trigger');
+    console.log('Renewing...');
     const exchange = await this.$relatedQuery('exchange');
     exchange.userSettings = settings;
     await exchange.ccxt.cancelOrder(this.orderId);
