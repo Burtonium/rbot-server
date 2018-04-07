@@ -2,6 +2,7 @@ require('dotenv').config();
 const Exchange = require('../models/exchange');
 const Ticker = require('../models/ticker');
 const _ = require('lodash');
+const { wait } = require('../utils');
 
 const exclusiveFilter = [
   'independentreserve',
@@ -79,7 +80,8 @@ const insertTickers = async () => {
 
 (async () => {
   while(true) {
-    await insertTickers();
+    await insertTickers().catch(e =>console.log(e));
+    await wait(1500);
   }
 })().then(() => {
   process.exit(0);
