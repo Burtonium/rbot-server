@@ -11,7 +11,7 @@ class Ticker extends Model {
 
   static get namedFilters() {
     return {
-      latest: query => query.orderBy('timestamp', 'desc').limit(1).first()
+      latest: query => query.orderBy('timestamp', 'desc').limit(100)
     };
   }
 

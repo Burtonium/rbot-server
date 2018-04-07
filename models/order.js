@@ -47,6 +47,7 @@ class Order extends Model {
         timestamp: t.datetime
       })
     );
+
     if (filtered.length > 0) {
       console.log('Inserting trades');
     }

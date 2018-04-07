@@ -35,7 +35,7 @@ class OrderCaddy extends Model {
     try {
       await this.completeArbitrageForFilledTriggers(filledTriggers, exchangeSettings, rt);
     } catch (error) {
-      console.log(error);
+      console.error(error);
       await this.cancelAllOrders();
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }

@@ -1,10 +1,7 @@
 require('dotenv').config();
 const Exchange = require('../models/exchange');
 const Ticker = require('../models/ticker');
-
 const _ = require('lodash');
-
-const maxTimeout = 60 * 1000;
 
 const exclusiveFilter = [
   'independentreserve',
@@ -33,7 +30,6 @@ const individualTickersOnly = [
   'coinegg',
   'yobit'
 ];
-
 
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
@@ -76,9 +72,15 @@ const insertTickers = async () => {
 
         insert.marketId = market.id;
         return Ticker.query().insert(insert);
-      });
+      }).catch((e) => {console.log(e)});
     });
   return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };
 
-setInterval(insertTickers, 4500);
+(async () => {
+  while(true) {
+    await insertTickers();
+  }
+})().then(() => {
+  process.exit(0);
+});

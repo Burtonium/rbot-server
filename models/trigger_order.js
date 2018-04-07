@@ -17,10 +17,6 @@ class TriggerOrder extends Model {
       }
     };
   }
-
-  $beforeInsert() {
-    console.log(this);
-  }
 }
 
 module.exports = TriggerOrder;

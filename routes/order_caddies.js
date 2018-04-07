@@ -25,8 +25,8 @@ module.exports.fetchOne = async (req, res) => {
       trades
     ],
     referenceMarkets.[
+      tickers(latest),
       exchange,
-      tickers(latest)
       ]
     ]`).first();
   return caddy ?  res.status(200).json(caddy) : res.status(404);
