@@ -54,14 +54,14 @@ class Exchange extends Model {
           if (/private/.exec(prop) && obj[prop]) {
             let nextCallAllowedAt = store.getItemSync(ccxtId + '-privatecall');
             const now = new Date().getTime();
-            nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1000 : now + 1000;
+            nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1010 : now + 1010;
             store.setItemSync(ccxtId + '-privatecall', nextCallAllowedAt);
             if (nextCallAllowedAt) {
               stagger = async(...args) => {
                 const millisToWait = new Date(nextCallAllowedAt).getTime() - new Date().getTime();
                 await wait(millisToWait > 0 ? millisToWait : 0);
                 return obj[prop](...args);
-              }
+              };
             }
           }
           return stagger || obj[prop];
