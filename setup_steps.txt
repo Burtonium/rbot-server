@@ -1,0 +1,4 @@
+knex migrate:latest
+knex seed:run
+node scripts/update_markets
+
