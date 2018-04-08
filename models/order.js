@@ -37,7 +37,13 @@ class Order extends Model {
       await Order.query().patch({ status: info.status }).where({ id: this.id });
     } catch (error) {
       console.log('Updating error:', error);
-      return Order.query().patch({ status: 'error' }).where({ id: this.id });
+      try {
+        await this.cancel();
+      } catch (error) {
+        console.error('Cancelation error:', error);
+        return Order.query().patch({ status: 'error' }).where({ id: this.id });
+      }
+      return Order.query().patch({ status: 'cancel' }).where({ id: this.id });
     }
 
     const trades = await market.exchange.ccxt.fetchMyTrades(market.symbol);
