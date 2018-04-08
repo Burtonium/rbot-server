@@ -36,11 +36,11 @@ class Order extends Model {
       info = await market.exchange.ccxt.fetchOrder(this.orderId);
       await Order.query().patch({ status: info.status }).where({ id: this.id });
     } catch (error) {
-      console.log('Updating error:', error);
+      console.log(new Date(), 'Updating error:', error);
       try {
         await this.cancel();
       } catch (error) {
-        console.error('Cancelation error:', error);
+        console.error(new Date(), 'Order:', this, 'Cancelation error:', error);
         return Order.query().patch({ status: 'error' }).where({ id: this.id });
       }
       return Order.query().patch({ status: 'cancel' }).where({ id: this.id });
