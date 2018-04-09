@@ -5,7 +5,7 @@ const { percentDifference } = require('../utils');
 class OrderCaddy extends Model {
   // Amount of deviation allowed before orders renewal
   static get referenceHysteresis() {
-    return 0.20;
+    return 0.25;
   }
 
   static get tableName() {
