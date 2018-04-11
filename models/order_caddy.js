@@ -29,14 +29,13 @@ class OrderCaddy extends Model {
     }));
 
     const rt = await this.fetchReferenceTickers();
-
-    const filledTriggers = (await this.$relatedQuery('triggers').eager('trades')).filter(t => t.filled > 0 && t.status !== 'canceled');
+    const filledTriggers = (await this.$relatedQuery('triggers').eager('trades')).filter(trig => trig.filled > 0 && trig.status !== 'canceled' && trig.status !== 'error');
 
     try {
       await this.completeArbitrageForFilledTriggers(filledTriggers, exchangeSettings, rt);
     } catch (error) {
-      console.error(error);
-      await this.cancelAllOrders();
+      console.error('Arb completion error:', error);
+      await this.cancelAllOpenOrders();
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }
 
@@ -47,25 +46,25 @@ class OrderCaddy extends Model {
 
       const trigger = openOrders.find(t => t.market.id === tm.id && t.side === tm.side);
 
+      let targetPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
       if (trigger) {
         if (trigger.side === 'buy'
-          && percentDifference(trigger.limitPrice, rt.targetBuyPrice) > OrderCaddy.referenceHysteresis) {
+          && percentDifference(trigger.limitPrice, targetPrice) > OrderCaddy.referenceHysteresis) {
           const { id } = await trigger.renew(rt.targetBuyPrice, settings);
           await this.$relatedQuery('triggers').relate(id);
         } else if (trigger.side === 'sell'
-          && percentDifference(trigger.limitPrice, rt.targetSellPrice) > OrderCaddy.referenceHysteresis) {
+          && percentDifference(trigger.limitPrice, targetPrice) > OrderCaddy.referenceHysteresis) {
           const { id } = await trigger.renew(rt.targetSellPrice, settings);
           await this.$relatedQuery('triggers').relate(id);
         }
       } else {
-        let limitPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
 
         await this.createTrigger(tm, {
           symbol: tm.symbol,
           side: tm.side,
           type: 'limit',
           amount: tm.amount,
-          limitPrice
+          targetPrice
         });
       }
     }));
@@ -106,7 +105,12 @@ class OrderCaddy extends Model {
     try {
       created = await exchange.createOrder(order);
     } catch (error) {
-      await this.cancelAllOrders();
+      try {
+        console.log('Error creating triggers', error);
+        await this.cancelAllOpenOrders();
+      } catch (error) {
+        console.log('Error canceling open orders');
+      }
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }
     return this.$relatedQuery('triggers').insert({
@@ -129,8 +133,9 @@ class OrderCaddy extends Model {
     }
   }
 
-  async cancelAllOrders() {
-    return Promise.all((this.triggers|| await this.$relatedQuery('triggers')).map(t => t.cancel()));
+  async cancelAllOpenOrders() {
+    const triggers = this.triggers && this.triggers.filter(t => t.status === 'open');
+    return Promise.all((triggers || await this.$relatedQuery('triggers').where('status', 'open')).map(t => t.cancel()));
   }
 
   static get relationMappings() {
@@ -162,7 +167,7 @@ class OrderCaddy extends Model {
       },
       triggers: {
         relation: Model.ManyToManyRelation,
-        modelClass: `${__dirname}/order`,
+        modelClass: `${__dirname}/trigger`,
         join: {
           from: 'order_caddies.id',
           through: {

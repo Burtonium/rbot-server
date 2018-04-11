@@ -3,10 +3,10 @@ const OrderCaddy = require('../models/order_caddy');
 
 let loop = true;
 
-process.on('SIGINT', function() {
-  console.log('Safely exiting after loop...');
-  loop = false;
-});
+// process.on('SIGINT', function() {
+//   console.log('Safely exiting after loop...');
+//   loop = false;
+// });
 
 let index = 0;
 

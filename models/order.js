@@ -41,9 +41,8 @@ class Order extends Model {
         await this.cancel();
       } catch (error) {
         console.error(new Date(), 'Order:', this, 'Cancelation error:', error);
-        return Order.query().patch({ status: 'error' }).where({ id: this.id });
       }
-      return Order.query().patch({ status: 'cancel' }).where({ id: this.id });
+      return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
     }
 
     const trades = await market.exchange.ccxt.fetchMyTrades(market.symbol);
@@ -71,7 +70,7 @@ class Order extends Model {
     const { exchangeSettings } = await this.$relatedQuery('user').eager('exchangeSettings');
     const exchange = await (this.exchange || await this.$relatedQuery('exchange'));
     exchange.userSettings = exchangeSettings.find(s => s.exchangeId === exchange.id);
-    await exchange.ccxt.cancelOrder(this.id);
+    await exchange.ccxt.cancelOrder(this.orderId);
     return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
   }
 

@@ -52,6 +52,7 @@ class Exchange extends Model {
         get(obj, prop) {
           let stagger = null;
           if (/private/.exec(prop) && obj[prop]) {
+            console.log("Staggering");
             let nextCallAllowedAt = store.getItemSync(ccxtId + '-privatecall');
             const now = new Date().getTime();
             nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1010 : now + 1010;
