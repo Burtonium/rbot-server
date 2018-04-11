@@ -48,11 +48,10 @@ class Exchange extends Model {
     if (!this.instance) {
       const ccxtId = this.ccxtId;
       // wrap in a proxy and stagger if needed (for example independentreserve)
-      this.instance =  new Proxy(new ccxt[this.ccxtId]({ verbose: false }), {
+      this.instance =  new Proxy(new ccxt[this.ccxtId]({ verbose: true }), {
         get(obj, prop) {
           let stagger = null;
-          if (/private/.exec(prop) && obj[prop]) {
-            console.log("Staggering");
+          if (/private/.exec(prop.toString()) && obj[prop]) {
             let nextCallAllowedAt = store.getItemSync(ccxtId + '-privatecall');
             const now = new Date().getTime();
             nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1010 : now + 1010;
