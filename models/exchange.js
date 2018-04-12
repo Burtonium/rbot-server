@@ -48,7 +48,7 @@ class Exchange extends Model {
     if (!this.instance) {
       const ccxtId = this.ccxtId;
       // wrap in a proxy and stagger if needed (for example independentreserve)
-      this.instance =  new Proxy(new ccxt[this.ccxtId]({ verbose: true }), {
+      this.instance =  new Proxy(new ccxt[this.ccxtId]({ verbose: false }), {
         get(obj, prop) {
           let stagger = null;
           if (/private/.exec(prop.toString()) && obj[prop]) {

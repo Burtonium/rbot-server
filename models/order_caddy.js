@@ -1,6 +1,5 @@
 const { Model } = require('../database');
 const _ = require('lodash');
-const { percentDifference } = require('../utils');
 
 class OrderCaddy extends Model {
   // Amount of deviation allowed before orders renewal
@@ -44,27 +43,23 @@ class OrderCaddy extends Model {
       const settings =  exchangeSettings.find(s => s.exchangeId === tm.exchange.id);
       tm.exchange.userSettings = settings;
 
-      const trigger = openOrders.find(t => t.market.id === tm.id && t.side === tm.side);
-
+      const trigger = openOrders.find(t => t.marketId === tm.id && t.side === tm.side);
       let targetPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
+      let calculated = await tm.calculateTargetPrice(targetPrice, settings);
+
       if (trigger) {
-        if (trigger.side === 'buy'
-          && percentDifference(trigger.limitPrice, targetPrice) > OrderCaddy.referenceHysteresis) {
-          const { id } = await trigger.renew(rt.targetBuyPrice, settings);
-          await this.$relatedQuery('triggers').relate(id);
-        } else if (trigger.side === 'sell'
-          && percentDifference(trigger.limitPrice, targetPrice) > OrderCaddy.referenceHysteresis) {
-          const { id } = await trigger.renew(rt.targetSellPrice, settings);
+        console.log(parseFloat(trigger.limitPrice));
+        if (parseFloat(trigger.limitPrice) !== calculated) {
+          const { id } = await trigger.renew(calculated, settings);
           await this.$relatedQuery('triggers').relate(id);
         }
       } else {
-
         await this.createTrigger(tm, {
           symbol: tm.symbol,
           side: tm.side,
           type: 'limit',
           amount: tm.amount,
-          targetPrice
+          limitPrice: targetPrice
         });
       }
     }));
@@ -78,8 +73,8 @@ class OrderCaddy extends Model {
     // fetch highest reference bid price
     const maxBid = tickers.reduce((max, t) => t.bid > max.bid ? t : max, tickers[0]);
 
-    let targetBuyPrice = minAsk.ask *= 1 - (this.minProfitabilityPercent / 100);
-    let targetSellPrice = maxBid.bid *= 1 + (this.minProfitabilityPercent / 100);
+    let targetBuyPrice = minAsk.ask * (1 - (this.minProfitabilityPercent / 100));
+    let targetSellPrice = maxBid.bid * (1 + (this.minProfitabilityPercent / 100));
 
     if (minAsk.market.pair.quoteCurrency.type === 'fiat') { // TODO replace by currency.format()
       targetBuyPrice = targetBuyPrice.toFixed(2);
@@ -154,7 +149,7 @@ class OrderCaddy extends Model {
       },
       triggerMarkets: {
         relation: Model.ManyToManyRelation,
-        modelClass: `${__dirname}/market`,
+        modelClass: `${__dirname}/trigger_market`,
         join: {
           from: 'order_caddies.id',
           through: {
