@@ -101,10 +101,10 @@ class OrderCaddy extends Model {
       created = await exchange.createOrder(order);
     } catch (error) {
       try {
-        console.log('Error creating triggers', error);
+        console.error('Error creating triggers', error);
         await this.cancelAllOpenOrders();
       } catch (error) {
-        console.log('Error canceling open orders');
+        console.error('Error canceling open orders');
       }
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }

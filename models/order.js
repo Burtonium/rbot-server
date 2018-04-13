@@ -53,9 +53,6 @@ class Order extends Model {
       })
     );
 
-    if (filtered.length > 0) {
-      console.log('Inserting trades');
-    }
     // TODO: check for new trades here
     await this.$relatedQuery('trades').delete();
     await this.$relatedQuery('trades').insert(filtered);
@@ -128,7 +125,6 @@ class Order extends Model {
   }
 
   async renew(targetPrice, settings) {
-    console.log('Renewing...');
     const exchange = await this.$relatedQuery('exchange');
     exchange.userSettings = settings;
     await exchange.ccxt.cancelOrder(this.orderId);
