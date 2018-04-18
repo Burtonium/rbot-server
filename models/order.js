@@ -33,16 +33,26 @@ class Order extends Model {
 
     let info = null;
     try {
-      info = await market.exchange.ccxt.fetchOrder(this.orderId);
-      await Order.query().patch({ status: info.status }).where({ id: this.id });
+      if (market.exchange.has.fetchOrder) {
+        info = await market.exchange.ccxt.fetchOrder(this.orderId);
+      } else if (market.exchange.has.fetchOpenOrders) {
+        let orders = await market.exchange.fetchOpenOrders(market.symbol);
+        info = orders.find(o => o.orderId === this.OrderId);
+      }
+      if (info && info.status) {
+        await Order.query().patch({ status: info.status }).where({ id: this.id });
+      }
     } catch (error) {
-      console.log(new Date(), 'Updating error:', error);
+      console.error('Update error:', error.message);
+      if (error.message.indexOf('doesn\'t exist')) {
+        return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
+      }
       try {
         await this.cancel();
       } catch (error) {
-        console.error(new Date(), 'Order:', this, 'Cancelation error:', error);
+        console.error('Cancelation error', error.message);
+        return;
       }
-      return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
     }
 
     const trades = await market.exchange.ccxt.fetchMyTrades(market.symbol);

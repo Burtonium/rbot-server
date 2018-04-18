@@ -43,14 +43,18 @@ class OrderCaddy extends Model {
       const settings =  exchangeSettings.find(s => s.exchangeId === tm.exchange.id);
       tm.exchange.userSettings = settings;
 
-      const trigger = openOrders.find(t => t.marketId === tm.id && t.side === tm.side);
+      const triggers = openOrders.filter(t => t.marketId === tm.id && t.side === tm.side);
+      if (triggers.length > 1) {
+        const cancels = triggers.slice(1, triggers.length).map(t => t.cancel());
+        await Promise.all(cancels).catch(e => console.error(e.message));
+      }
+
       let targetPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
       let calculated = await tm.calculateTargetPrice(targetPrice, settings);
 
-      if (trigger) {
-        console.log(parseFloat(trigger.limitPrice));
-        if (parseFloat(trigger.limitPrice) !== calculated) {
-          const { id } = await trigger.renew(calculated, settings);
+      if (triggers.length) {
+        if (parseFloat(triggers[0].limitPrice) !== calculated) {
+          const { id } = await triggers[0].renew(calculated, settings);
           await this.$relatedQuery('triggers').relate(id);
         }
       } else {
@@ -59,7 +63,7 @@ class OrderCaddy extends Model {
           side: tm.side,
           type: 'limit',
           amount: tm.amount,
-          limitPrice: targetPrice
+          limitPrice: calculated
         });
       }
     }));

@@ -15,35 +15,30 @@ const _ = require('lodash');
     try {
       await exchange.loadMarkets(true);
 
-      let exchangeId;
-      try {
-        const record = await Exchange.query().insert({ ccxt_id: e, name: exchange.name }).returning('*');
-      } catch (error) {
-        // Do nothing
+      let record = await Exchange.query().select('id').where({ ccxtId: e }).first();
+      if (!record) {
+        const insert = await Exchange.query().insert({ ccxt_id: e, name: exchange.name }).returning('*');
+        record = insert[0];
       }
 
-      const record = await Exchange.query().select('id').where({ ccxtId: e }).first();
-      exchangeId = record.id;
-
+      const exchangeId = record.id;
       if (exchangeId) {
         await Promise.all(Object.values(exchange.markets).map(async (market) => {
-          let currencyPairId;
-          try {
-            let inserts = await CurrencyPair.query().insert({ quote: market.quote, base: market.base }).returning('*');
-            currencyPairId = inserts[0].id;
-          } catch (error) {
-            const pair = await CurrencyPair.query().where({ quote: market.quote, base: market.base }).first();
-
-            if (!pair) {
-              throw new Error(`Warning: Unsupported pair ${market.base}/${market.quote}`);
+          let pair = await CurrencyPair.query().where({ quote: market.quote, base: market.base }).first();
+          if (!pair) {
+            try {
+              let inserts = await CurrencyPair.query().insert({ quote: market.quote, base: market.base }).returning('*');
+              pair = inserts[0];
+              console.log(pair);
+            } catch (error) {
+              console.warn(`Warning: Unsupported pair ${market.base}/${market.quote}`);
             }
-            currencyPairId = pair.id;
           }
-          return Market.query().insert({ symbol: market.symbol, currencyPairId, exchangeId });
-        })).catch(error => console.log(error.message));
+          return pair && Market.query().insert({ symbol: market.symbol, currencyPairId: pair.id, exchangeId }).catch(e => e);
+        }));
       }
     } catch (e) {
-      // console.log(e);
+      console.error('An error occured:', e.message);
     }
   }
   process.exit();

@@ -7,7 +7,7 @@ const { wait } = require('../utils');
 const exclusiveFilter = [
   'independentreserve',
   'bitstamp',
-  'bitfinex'
+  'bitfinex',
 ];
 
 const filtered = [
@@ -73,7 +73,7 @@ const insertTickers = async () => {
 
         insert.marketId = market.id;
         return Ticker.query().insert(insert);
-      }).catch((e) => {console.log(e)});
+      }).catch(e => console.log(e.message));
     });
   return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };

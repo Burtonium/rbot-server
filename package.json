@@ -16,7 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.2",
-    "ccxt": "git+https://github.com/Burtonium/ccxt.git#independent-reserve-trades",
+    "ccxt": "git+git@github.com:Burtonium/ccxt-private.git#rbot",
     "cors": "^2.8.4",
     "dotenv": "^5.0.0",
     "express": "^4.16.2",
@@ -31,7 +31,8 @@
     "objection-password": "^1.0.0",
     "objection-timestamp": "^1.1.0",
     "pg": "^7.4.1",
-    "promisify-node": "^0.4.0"
+    "promisify-node": "^0.4.0",
+    "web3-utils": "^1.0.0-beta.34"
   },
   "devDependencies": {
     "eslint": "^4.19.1",
