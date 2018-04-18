@@ -37,7 +37,7 @@ const fetchTickers = async (exchange, tickerCallback) => {
 
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
     tickers = await exchange.ccxt.fetchTickers();
-    Object.values(tickers).forEach(t => tickerCallback(t.symbol, t));
+    await Promise.all(Object.values(tickers).map(t => tickerCallback(t.symbol, t)));
   } else {
     const markets = exchange.markets;
     tickers = {};
@@ -61,7 +61,7 @@ const insertTickers = async () => {
     .map(async e => {
       await e.ccxt.loadMarkets();
 
-      await fetchTickers(e, async(symbol, ticker) => {
+      return fetchTickers(e, async (symbol, ticker) => {
         const market = e.markets.find(m => m.symbol === symbol);
         if (!market) {
           return false;
@@ -73,14 +73,14 @@ const insertTickers = async () => {
 
         insert.marketId = market.id;
         return Ticker.query().insert(insert);
-      }).catch(e => console.log(e.message));
+      }).catch(e => console.error('Error updating ticker:', e.message));
     });
   return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };
 
 (async () => {
   while(true) {
-    await insertTickers().catch(e =>console.log(e));
+    await insertTickers().catch(e => console.error(e.message));
     await wait(1500);
   }
 })().then(() => {

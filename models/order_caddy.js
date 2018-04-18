@@ -34,7 +34,7 @@ class OrderCaddy extends Model {
       await this.completeArbitrageForFilledTriggers(filledTriggers, exchangeSettings, rt);
     } catch (error) {
       console.error('Arb completion error:', error);
-      await this.cancelAllOpenOrders();
+      await this.cancelAllOpenOrders().catch(e => console.error('Error canceling all orders:', e.message));
       return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
     }
 
@@ -46,7 +46,7 @@ class OrderCaddy extends Model {
       const triggers = openOrders.filter(t => t.marketId === tm.id && t.side === tm.side);
       if (triggers.length > 1) {
         const cancels = triggers.slice(1, triggers.length).map(t => t.cancel());
-        await Promise.all(cancels).catch(e => console.error(e.message));
+        await Promise.all(cancels).catch(e => console.error('Error canceling extra triggers:', e.message));
       }
 
       let targetPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
@@ -54,8 +54,12 @@ class OrderCaddy extends Model {
 
       if (triggers.length) {
         if (parseFloat(triggers[0].limitPrice) !== calculated) {
-          const { id } = await triggers[0].renew(calculated, settings);
-          await this.$relatedQuery('triggers').relate(id);
+          try {
+            const { id } = await triggers[0].renew(calculated, settings);
+            await this.$relatedQuery('triggers').relate(id);
+          } catch (error) {
+            console.error('Error renewing trigger:', error.message);
+          }
         }
       } else {
         await this.createTrigger(tm, {
