@@ -15,6 +15,7 @@
   "author": "Matt Burton matt@burtonize.me",
   "license": "ISC",
   "dependencies": {
+    "@sendgrid/mail": "^6.2.1",
     "body-parser": "^1.18.2",
     "ccxt": "git+git@github.com:Burtonium/ccxt-private.git#rbot",
     "cors": "^2.8.4",

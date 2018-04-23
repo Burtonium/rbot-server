@@ -34,8 +34,9 @@ class OrderCaddy extends Model {
       await this.completeArbitrageForFilledTriggers(filledTriggers, exchangeSettings, rt);
     } catch (error) {
       console.error('Arb completion error:', error);
-      await this.cancelAllOpenOrders().catch(e => console.error('Error canceling all orders:', e.message));
-      return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
+      await this.cancelAllOpenOrders().catch(e => console.error('Error canceling all orders:', error.message));
+      await OrderCaddy.query().patch({ active: false }).where({ id: this.id });
+      return this.user.notify('error', `Caddy ${this.label} was shut down because of the following error: ${error.message}`);
     }
 
     // renew triggers or create them if they're not there

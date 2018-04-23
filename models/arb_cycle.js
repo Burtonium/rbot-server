@@ -50,6 +50,13 @@ class ArbCycle extends Model {
     return totalOnBuys - totalOnSells;
   }
 
+  async profit() {
+    const { buy, sell } = _.groupBy(this.orders || await this.$relatedQuery('orders'), 'side');
+    const costOnBuys = (buy || []).reduce((amount, o) => amount + parseFloat(o.cost), 0);
+    const costOnSells = (sell || []).reduce((amount, o) => amount + parseFloat(o.cost), 0);
+    return costOnSells - costOnBuys;
+  }
+
   async placeReferenceOrder({ minAsk, maxBid }) {
     assert(minAsk && maxBid, 'minAsk and maxBid are required');
     const difference = await this.difference();
@@ -60,8 +67,6 @@ class ArbCycle extends Model {
     if (difference === 0) {
       return;
     }
-
-    console.log('Completing an arb for: ', Math.abs(difference));
 
     const exchange = ticker.market.exchange;
     const { exchangeSettings } = await this.$relatedQuery('user')
@@ -83,6 +88,10 @@ class ArbCycle extends Model {
       status: 'open',
       ..._.pick(created, [ 'orderId', 'type', 'side', 'amount'])
     });
+
+    const user = this.user || await this.$relatedQuery('user');
+    const profit = await this.profit();
+    user.notify('success', `An arb was completed.\nSymbol: ${ticker.market.symbol} \nProfit: ${profit}`);
 
     return order.updateInfo();
   }
