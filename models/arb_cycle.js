@@ -91,7 +91,8 @@ class ArbCycle extends Model {
 
     const user = this.user || await this.$relatedQuery('user');
     const profit = await this.profit();
-    user.notify('success', `An arb was completed.\nSymbol: ${ticker.market.symbol} \nProfit: ${profit}`);
+    const msg = `An arb was completed.\nSymbol: ${ticker.market.symbol} \nProfit: ${profit}`;
+    user.notify('success', msg);
 
     return order.updateInfo();
   }
