@@ -8,6 +8,7 @@ const exclusiveFilter = [
   'independentreserve',
   'bitstamp',
   'bitfinex',
+  'idex'
 ];
 
 const filtered = [
@@ -54,7 +55,6 @@ const fetchTickers = async (exchange, tickerCallback) => {
 
 const insertTickers = async () => {
   const exchanges = await Exchange.query().eager('markets');
-
   const promises = exchanges
     .filter(e => !exclusiveFilter.length || exclusiveFilter.includes(e.ccxtId))
     .filter(e => !filtered.includes(e.ccxtId))
@@ -69,7 +69,7 @@ const insertTickers = async () => {
 
         const insert = _.pick(ticker, ['ask', 'askVolume', 'bid', 'bidVolume', 'timestamp']);
 
-        insert.timestamp = new Date(insert.timestamp);
+        insert.timestamp = insert.timestamp ? new Date(insert.timestamp) : new Date();
 
         insert.marketId = market.id;
         return Ticker.query().insert(insert);

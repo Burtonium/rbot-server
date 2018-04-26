@@ -11,11 +11,15 @@ class Order extends Model {
   }
 
   static get virtualAttributes() {
-    return ['filled', 'averagePrice'];
+    return ['filled', 'averagePrice', 'cost'];
   }
 
   get filled() {
     return (this.trades || []).map(t => t.filled).reduce((a, b) => a + b, 0);
+  }
+
+  get cost() {
+    return (this.trades || []).map(t => t.cost).reduce((a, b) => a + b, 0);
   }
 
   get averagePrice() {

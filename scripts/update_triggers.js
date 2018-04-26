@@ -16,7 +16,7 @@ let index = 0;
     .where({ active: true })
     .eager('[triggerMarkets.[exchange,pair.[baseCurrency,quoteCurrency]], referenceMarkets.exchange]');
 
-    await Promise.all(activeCaddies.map(c => c.updateTriggerOrders())).catch(e => console.error('Error updating triggers:', e.message));
+    await Promise.all(activeCaddies.map(c => c.updateTriggerOrders())).catch(e => console.error('Error updating triggers:', e));
     index++;
   }
 })().then(() => {

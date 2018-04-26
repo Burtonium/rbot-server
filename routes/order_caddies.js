@@ -55,7 +55,7 @@ module.exports.deleteOne = async (req, res) => {
       return res.status(200).json({ success: true });
     }
 
-    await caddy.cancelAllOrders();
+    await caddy.cancelAllOpenOrders();
     await caddy.$relatedQuery('triggers').unrelate();
     await OrderCaddy.query().delete().where({ id: caddyId });
   } catch (error) {

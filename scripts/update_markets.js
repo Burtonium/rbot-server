@@ -17,8 +17,8 @@ const _ = require('lodash');
 
       let record = await Exchange.query().select('id').where({ ccxtId: e }).first();
       if (!record) {
-        const insert = await Exchange.query().insert({ ccxt_id: e, name: exchange.name }).returning('*');
-        record = insert[0];
+        const insert = await Exchange.query().insert({ ccxt_id: e, name: exchange.name });
+        record = insert;
       }
 
       const exchangeId = record.id;
@@ -27,9 +27,7 @@ const _ = require('lodash');
           let pair = await CurrencyPair.query().where({ quote: market.quote, base: market.base }).first();
           if (!pair) {
             try {
-              let inserts = await CurrencyPair.query().insert({ quote: market.quote, base: market.base }).returning('*');
-              pair = inserts[0];
-              console.log(pair);
+              pair = await CurrencyPair.query().insert({ quote: market.quote, base: market.base });
             } catch (error) {
               console.warn(`Warning: Unsupported pair ${market.base}/${market.quote}`);
             }
