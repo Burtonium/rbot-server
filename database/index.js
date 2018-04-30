@@ -2,6 +2,7 @@ const config = require('../knexfile.js');
 const knex = require('knex')(config);
 const objection = require('objection');
 const objectionTimestamp = require('objection-timestamp');
+const visibilityPlugin = require('objection-visibility');
 const _ = require('lodash');
 
 objectionTimestamp.register(objection, {
@@ -13,5 +14,5 @@ objection.Model.knex(knex);
 
 module.exports = {
   knex,
-  Model: objection.Model
+  Model: visibilityPlugin(objection.Model)
 };

@@ -9,6 +9,10 @@ class ExchangeSettings extends Model {
     return false;
   }
 
+  static get hidden() {
+    return ['secret', 'password'];
+  }
+
   static get relationMappings() {
     return {
       user: {

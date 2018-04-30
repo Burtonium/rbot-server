@@ -14,11 +14,14 @@ module.exports.verifyToken = async (req, res, next) => {
   try {
     decoded = await jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
-    throw new AuthenticationError('Invalid token');
+    throw new AuthenticationError('Invalid token:', error.message);
   }
 
   req.decodedToken = decoded;
-  req.user = decoded.user;
+  req.user = await User.query().where('id', decoded.user.id).first();
+  if (!req.user) {
+    throw new AuthenticationError('User doesn\'t exist');
+  }
   next();
 };
 

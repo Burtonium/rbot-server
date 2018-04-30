@@ -31,6 +31,7 @@
     "objection": "^1.1.7",
     "objection-password": "^1.0.0",
     "objection-timestamp": "^1.1.0",
+    "objection-visibility": "^0.2.0",
     "pg": "^7.4.1",
     "promisify-node": "^0.4.0",
     "web3-utils": "^1.0.0-beta.34"

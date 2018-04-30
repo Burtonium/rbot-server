@@ -1,6 +1,49 @@
 const Exchange = require('../models/exchange');
+const ExchangeSettings = require('../models/exchange_settings');
+const assert = require('assert');
+const _ = require('lodash');
 
-module.exports.fetchAll = async (req, res, next) => {
-  const exchanges = await Exchange.query().eager('markets.[pair, exchange]');
-  return res.status(200).json(exchanges);
+const flattenSettings = e => {
+  const exchange = _.omit(e, ['settings']);
+  Object.assign(exchange, e.settings && e.settings[0]);
+  return exchange;
+};
+
+module.exports.fetchAll = async (req, res) => {
+  const exchanges = await Exchange.query().eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id));
+  const response = exchanges.map(flattenSettings);
+  return res.status(200).json(response);
+};
+
+module.exports.patch = async (req, res) => {
+  const payload = req.body.exchange;
+  const exchangeId = req.params.id;
+  const exchange = await Exchange.query()
+    .where(Number.isInteger(+exchangeId) ? 'id' : 'ccxtId', exchangeId)
+    .eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id))
+    .first();
+
+  if (!exchange) {
+    return res.status(404).send('Exchange not found');
+  }
+
+  const upsert = _.pick(payload, ['secret', 'apiKey', 'uid', 'password', 'enabled']);
+
+  if (exchange.settings.length > 0) {
+    const settings = exchange.settings[0];
+    await ExchangeSettings.query().update(upsert).where('id', settings.id);
+  } else {
+    upsert.exchangeId = exchange.id;
+    await req.user.$relatedQuery('exchangeSettings').insert(upsert);
+  }
+
+  const result = Exchange.query()
+    .where('id', exchange.id)
+    .eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id))
+    .first();
+
+  res.status(200).json({ success: true, exchange: result });
 };
