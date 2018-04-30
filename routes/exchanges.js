@@ -5,7 +5,7 @@ const _ = require('lodash');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
-  Object.assign(exchange, e.settings && e.settings[0]);
+  Object.assign(exchange, e.settings && _.omit(e.settings[0], ['id', 'exchangeId']));
   return exchange;
 };
 
@@ -39,11 +39,11 @@ module.exports.patch = async (req, res) => {
     await req.user.$relatedQuery('exchangeSettings').insert(upsert);
   }
 
-  const result = Exchange.query()
+  const result = await Exchange.query()
     .where('id', exchange.id)
     .eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
 
-  res.status(200).json({ success: true, exchange: result });
+  res.status(200).json({ success: true, exchange: flattenSettings(result) });
 };
