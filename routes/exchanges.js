@@ -5,7 +5,7 @@ const _ = require('lodash');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
-  Object.assign(exchange, e.settings && _.omit(e.settings[0], ['id', 'exchangeId']));
+  Object.assign(exchange, e.settings[0] && _.omit(e.settings[0].toJSON(), ['id', 'exchangeId']));
   return exchange;
 };
 
