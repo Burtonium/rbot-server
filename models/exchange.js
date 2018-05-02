@@ -34,6 +34,14 @@ class Exchange extends Model {
           from: 'exchanges.id',
           to: 'exchange_settings.exchangeId'
         }
+      },
+      apiCalls: {
+        relation: Model.HasManyRelation,
+        modelClass: `${__dirname}/api_call`,
+        join: {
+          from: 'exchanges.id',
+          to: 'api_calls.exchange_id'
+        }
       }
     };
   }

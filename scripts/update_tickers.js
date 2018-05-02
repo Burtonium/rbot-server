@@ -1,6 +1,7 @@
 require('dotenv').config();
 const Exchange = require('../models/exchange');
 const Ticker = require('../models/ticker');
+const ApiCall = require('../models/api_call');
 const _ = require('lodash');
 const { wait } = require('../utils');
 
@@ -35,6 +36,8 @@ const individualTickersOnly = [
 
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
+  
+  let startTime = Date.now();
 
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
     tickers = await exchange.ccxt.fetchTickers();
@@ -50,6 +53,18 @@ const fetchTickers = async (exchange, tickerCallback) => {
 
     await Promise.all(promises);
   }
+  
+  //insert to api_calls table
+  let apiCall = { 
+    latency: Date.now() - startTime,
+    method: 'fetchTickers',
+    exchangeId: exchange.id
+  };
+  
+  if (!(await ApiCall.query().insert(apiCall))) {
+    console.error("Error: Couldn't insert api call");
+  }
+  
   return tickers;
 };
 
@@ -60,8 +75,8 @@ const insertTickers = async () => {
     .filter(e => !filtered.includes(e.ccxtId))
     .map(async e => {
       await e.ccxt.loadMarkets();
-
-      return fetchTickers(e, async (symbol, ticker) => {
+      
+      const result = fetchTickers(e, async (symbol, ticker) => {
         const market = e.markets.find(m => m.symbol === symbol);
         if (!market) {
           return false;
@@ -74,6 +89,8 @@ const insertTickers = async () => {
         insert.marketId = market.id;
         return Ticker.query().insert(insert);
       }).catch(e => console.error('Error updating ticker:', e.message));
+      
+      return result;
     });
   return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };
@@ -81,7 +98,7 @@ const insertTickers = async () => {
 (async () => {
   while(true) {
     await insertTickers().catch(e => console.error(e.message));
-    await wait(1500);
+    await wait(process.env.TICKER_UPDATE_DELAY || 1500);
   }
 })().then(() => {
   process.exit(0);
