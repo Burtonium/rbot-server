@@ -51,7 +51,7 @@ class OrderCaddy extends Model {
       }
 
       let targetPrice = tm.side === 'buy' ? rt.targetBuyPrice : rt.targetSellPrice;
-      let calculated = await tm.calculateTargetPrice(targetPrice, settings);
+      let calculated = await tm.calculateTargetPrice(targetPrice, settings, triggers[0]);
 
       if (triggers.length) {
         if (parseFloat(triggers[0].limitPrice) !== calculated) {
