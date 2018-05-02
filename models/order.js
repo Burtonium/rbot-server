@@ -138,7 +138,7 @@ class Order extends Model {
     };
   }
 
-  async renew(targetPrice, settings) {
+  async renew(targetPrice, amount, settings) {
     const exchange = await this.$relatedQuery('exchange');
     exchange.userSettings = settings;
     await exchange.ccxt.cancelOrder(this.orderId);
@@ -146,7 +146,8 @@ class Order extends Model {
     await Order.query().patch({status: 'canceled'}).where({ id: this.id });
 
     const order = await exchange.createOrder({
-      ..._.pick(this, ['side', 'type', 'amount']),
+      ..._.pick(this, ['side', 'type']),
+      amount,
       symbol: this.market.symbol,
       limitPrice: targetPrice
     });
@@ -155,7 +156,8 @@ class Order extends Model {
       userId: this.userId,
       marketId: this.marketId,
       status: 'open',
-      ..._.pick(order, [ 'orderId', 'type', 'side', 'amount', 'limitPrice'])
+      amount,
+      ..._.pick(order, [ 'orderId', 'type', 'side', 'limitPrice'])
     });
   }
 }

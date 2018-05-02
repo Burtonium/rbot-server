@@ -56,7 +56,7 @@ class OrderCaddy extends Model {
       if (triggers.length) {
         if (parseFloat(triggers[0].limitPrice) !== calculated) {
           try {
-            const { id } = await triggers[0].renew(calculated, settings);
+            const { id } = await triggers[0].renew(calculated, tm.amount, settings);
             await this.$relatedQuery('triggers').relate(id);
           } catch (error) {
             console.error('Error renewing trigger:', error.message);
