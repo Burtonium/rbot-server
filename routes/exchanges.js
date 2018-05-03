@@ -3,18 +3,12 @@ const ExchangeSettings = require('../models/exchange_settings');
 const assert = require('assert');
 const { knex } = require('../database/index');
 const _ = require('lodash');
+const { raw } = require('objection');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
   Object.assign(exchange, e.settings[0] && _.omit(e.settings[0].toJSON(), ['id', 'exchangeId']));
   return exchange;
-};
-
-module.exports.fetchAll = async (req, res) => {
-  const exchanges = await Exchange.query().eager('settings')
-    .modifyEager('settings', query => query.where('userId', req.user.id));
-  const response = exchanges.map(flattenSettings);
-  return res.status(200).json(response);
 };
 
 module.exports.patch = async (req, res) => {
@@ -49,9 +43,27 @@ module.exports.patch = async (req, res) => {
   res.status(200).json({ success: true, exchange: flattenSettings(result) });
 };
 
-module.exports.fetchLatency = async (req, res) => {
-  const result = await knex('api_calls').avg('lastTenCalls.latency as latency').from(function () {
-    this.select('latency').from('api_calls').where('exchange_id', req.params.id).orderBy('timestamp', 'desc').limit(10).as('lastTenCalls');
+module.exports.fetchAll = async (req, res, next) => {
+  const exchanges = await Exchange.query().eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id));
+    
+  const latencies = await knex.raw(`select exchange_id, avg(latency) as ave_latency
+    from (
+      select exchange_id, latency
+      from (
+        select *, row_number() over (partition by exchange_id order by timestamp desc) as r
+        from api_calls
+      ) partitioned
+      where r <= 10
+    ) top_ten
+    group by exchange_id`);
+  
+  latencies.rows.forEach((l) => {
+    const e = exchanges.find(e => e.id == l.exchange_id);
+    if (e) {
+      e.latency = l.ave_latency;
+    }
   });
-  return res.status(200).json(result[0].latency);
-}
+  const response = exchanges.map(flattenSettings);
+  return res.status(200).json(response);
+};

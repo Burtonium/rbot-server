@@ -12,7 +12,6 @@ router.delete('/caddies/:id', auth.verifyToken, caddies.deleteOne);
 router.post('/caddies', auth.verifyToken, caddies.create);
 router.get('/exchanges', auth.verifyToken, exchanges.fetchAll);
 router.patch('/exchanges/:id', auth.verifyToken, exchanges.patch);
-router.get('/exchange/latency/:id', exchanges.fetchLatency);
 // router.get('/markets', markets.get);
 router.get('/pairs', pairs.fetchAll);
 
