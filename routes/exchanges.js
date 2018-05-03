@@ -1,6 +1,7 @@
 const Exchange = require('../models/exchange');
 const ExchangeSettings = require('../models/exchange_settings');
 const assert = require('assert');
+const { knex } = require('../database/index');
 const _ = require('lodash');
 
 const flattenSettings = e => {
@@ -47,3 +48,10 @@ module.exports.patch = async (req, res) => {
 
   res.status(200).json({ success: true, exchange: flattenSettings(result) });
 };
+
+module.exports.fetchLatency = async (req, res) => {
+  const result = await knex('api_calls').avg('lastTenCalls.latency as latency').from(function () {
+    this.select('latency').from('api_calls').where('exchange_id', req.params.id).orderBy('timestamp', 'desc').limit(10).as('lastTenCalls');
+  });
+  return res.status(200).json(result[0].latency);
+}
