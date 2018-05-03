@@ -18,7 +18,7 @@ class OrderCaddy extends Model {
   async updateTriggerOrders() {
     const { exchangeSettings } = await this.$relatedQuery('user').eager('exchangeSettings');
 
-    const openOrders = await this.fetchOpenOrders();
+    const openOrders = await this.fetchOpenOrders(exchangeSettings);
 
     // update all open orders information
     await Promise.all(openOrders.map(t => {
@@ -40,7 +40,7 @@ class OrderCaddy extends Model {
     }
 
     // renew triggers or create them if they're not there
-    return Promise.all(this.triggerMarkets.map( async (tm) => {
+    await Promise.all(this.triggerMarkets.map( async (tm) => {
       const settings =  exchangeSettings.find(s => s.exchangeId === tm.exchange.id);
       tm.exchange.userSettings = settings;
 
@@ -72,6 +72,9 @@ class OrderCaddy extends Model {
         });
       }
     }));
+    
+    
+    
   }
 
   async fetchReferenceTickers() {
@@ -95,12 +98,16 @@ class OrderCaddy extends Model {
     return { minAsk, maxBid, targetBuyPrice, targetSellPrice };
   }
 
-  async fetchOpenOrders() {
+  async fetchOpenOrders(settings) {
+    const exchange = this.triggerMarkets[0].exchange;
+    exchange.userSettings = settings.find(s => s.exchangeId === exchange.id);
+    const open = await exchange.ccxt.fetchOpenOrders(this.triggerMarkets[0].symbol);
+
     return _.flatten(await this.$relatedQuery('triggers')
       .eager('[market.exchange.settings,arbCycle.orders.market.exchange.settings]')
       .modifyEager('market.exchange.settings', query => query.where('userId', this.userId))
       .modifyEager('arbCycle.orders.market.exchange.settings', query => query.where('userId', this.userId))
-      .map(o => o.arbCycle ? o.arbCycle.orders : [o])).filter(o => o.status === 'open');
+      .map(o => o.arbCycle ? o.arbCycle.orders : [o])).filter(o => o.status === 'open' || open.map(o => o.id).includes(o.orderId));
   }
 
   async createTrigger(market, order) {
@@ -109,13 +116,8 @@ class OrderCaddy extends Model {
     try {
       created = await exchange.createOrder(order);
     } catch (error) {
-      try {
-        console.error('Error creating triggers', error);
-        await this.cancelAllOpenOrders();
-      } catch (error) {
-        console.error('Error canceling open orders');
-      }
-      return OrderCaddy.query().patch({ active: false }).where({ id: this.id });
+      console.error('Error creating triggers', error);
+      return;
     }
     return this.$relatedQuery('triggers').insert({
       userId: this.userId,

@@ -47,7 +47,7 @@ class Order extends Model {
         await Order.query().patch({ status: info.status }).where({ id: this.id });
       }
     } catch (error) {
-      console.error('Update error:', error.message);
+      console.error(`Update error for order ${this.orderId}:`, error.message);
       if (error.message.indexOf('doesn\'t exist')) {
         return Order.query().patch({ status: 'canceled' }).where({ id: this.id });
       }
@@ -141,9 +141,7 @@ class Order extends Model {
   async renew(targetPrice, amount, settings) {
     const exchange = await this.$relatedQuery('exchange');
     exchange.userSettings = settings;
-    await exchange.ccxt.cancelOrder(this.orderId);
-
-    await Order.query().patch({status: 'canceled'}).where({ id: this.id });
+    await this.cancel();
 
     const order = await exchange.createOrder({
       ..._.pick(this, ['side', 'type']),
