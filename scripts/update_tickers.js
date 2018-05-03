@@ -1,16 +1,21 @@
 require('dotenv').config();
+const { knex } = require('../database/index');
 const Exchange = require('../models/exchange');
 const Ticker = require('../models/ticker');
 const ApiCall = require('../models/api_call');
 const _ = require('lodash');
 const { wait } = require('../utils');
 
+var exclusiveFilter = [];
+
+/*
 const exclusiveFilter = [
   'independentreserve',
   'bitstamp',
   'bitfinex',
   'idex'
 ];
+*/
 
 const filtered = [
   'allcoin',
@@ -37,7 +42,8 @@ const individualTickersOnly = [
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
   
-  let startTime = Date.now();
+  console.log("fetching tickers for " + exchange.name);
+  const startTime = Date.now();
 
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
     tickers = await exchange.ccxt.fetchTickers();
@@ -54,15 +60,14 @@ const fetchTickers = async (exchange, tickerCallback) => {
     await Promise.all(promises);
   }
   
-  //insert to api_calls table
-  let apiCall = { 
+  const apiCall = { 
     latency: Date.now() - startTime,
     method: 'fetchTickers',
     exchangeId: exchange.id
   };
   
   if (!(await ApiCall.query().insert(apiCall))) {
-    console.error("Error: Couldn't insert api call");
+    console.error("Error: Couldn't insert api call to database");
   }
   
   return tickers;
@@ -97,6 +102,11 @@ const insertTickers = async () => {
 
 (async () => {
   while(true) {
+    const results = await knex('exchanges').select('ccxt_id').whereIn('id', function() {
+      this.select('exchange_id').from('exchange_settings').where('enabled', true);
+    });
+    exclusiveFilter = results.map(a => a.ccxtId);
+    
     await insertTickers().catch(e => console.error(e.message));
     await wait(process.env.TICKER_UPDATE_DELAY || 1500);
   }
