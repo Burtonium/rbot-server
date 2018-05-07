@@ -61,7 +61,7 @@ module.exports.fetchAll = async (req, res, next) => {
   latencies.rows.forEach((l) => {
     const e = exchanges.find(e => e.id == l.exchange_id);
     if (e) {
-      e.latency = l.ave_latency;
+      e.latency = parseInt(l.ave_latency);
     }
   });
   const response = exchanges.map(flattenSettings);
