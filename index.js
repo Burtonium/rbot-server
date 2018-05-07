@@ -11,15 +11,10 @@ const port = process.env.PORT || 8081;
 const app = express();
 // const production = process.env.NODE_ENV === 'production';
 
-const corsOptions = {
-  origin: '*',
-  optionsSuccessStatus: 200
-}
-
 app.use(morgan('combined'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors(corsOptions));
+app.use(cors());
 app.use(helmet());
 app.use('/', routes);
 
