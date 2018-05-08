@@ -8,15 +8,6 @@ const { wait } = require('../utils');
 
 var exclusiveFilter = [];
 
-/*
-const exclusiveFilter = [
-  'independentreserve',
-  'bitstamp',
-  'bitfinex',
-  'idex'
-];
-*/
-
 const filtered = [
   'allcoin',
   'bit2c',
@@ -76,7 +67,7 @@ const fetchTickers = async (exchange, tickerCallback) => {
 const insertTickers = async () => {
   const exchanges = await Exchange.query().eager('markets');
   const promises = exchanges
-    .filter(e => !exclusiveFilter.length || exclusiveFilter.includes(e.ccxtId))
+    .filter(e => exclusiveFilter.includes(e.ccxtId))
     .filter(e => !filtered.includes(e.ccxtId))
     .map(async e => {
       await e.ccxt.loadMarkets();

@@ -47,23 +47,41 @@ module.exports.fetchAll = async (req, res, next) => {
   const exchanges = await Exchange.query().eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id));
     
-  const latencies = await knex.raw(`select exchange_id, avg(latency) as ave_latency
+  const latencies = await knex.raw(`
+    select exchange_id, avg(latency) as ave_latency
     from (
       select exchange_id, latency
       from (
         select *, row_number() over (partition by exchange_id order by timestamp desc) as r
         from api_calls
       ) partitioned
-      where r <= 10
+      where r <= 10 and timestamp > NOW() - INTERVAL '1 minute'
     ) top_ten
-    group by exchange_id`);
+    group by exchange_id
+  `);
+    
+  console.log(latencies.rows);
   
+  exchanges.forEach((e) => {
+    const l = latencies.rows.find(l => l.exchange_id == e.id);
+    if (l) {
+      e.latency = parseInt(l.ave_latency);
+      e.status = 'active';
+    } else {
+      e.status = 'not active';
+    }
+  });
+  
+  /*
   latencies.rows.forEach((l) => {
     const e = exchanges.find(e => e.id == l.exchange_id);
     if (e) {
       e.latency = parseInt(l.ave_latency);
+      console.log(e.latency);
     }
   });
+  */
+  
   const response = exchanges.map(flattenSettings);
   return res.status(200).json(response);
 };
