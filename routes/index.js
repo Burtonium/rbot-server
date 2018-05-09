@@ -10,6 +10,7 @@ router.get('/caddies', auth.verifyToken, caddies.fetchAll);
 router.get('/caddies/:id', auth.verifyToken, caddies.fetchOne);
 router.delete('/caddies/:id', auth.verifyToken, caddies.deleteOne);
 router.post('/caddies', auth.verifyToken, caddies.create);
+router.patch('/caddies/:id', auth.verifyToken, caddies.patch);
 router.get('/exchanges', auth.verifyToken, exchanges.fetchAll);
 router.patch('/exchanges/:id', auth.verifyToken, exchanges.patch);
 // router.get('/markets', markets.get);

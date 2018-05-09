@@ -1,20 +1,10 @@
 const OrderCaddy = require('../models/order_caddy');
 const assert = require('assert');
+const _ = require('lodash');
 
-module.exports.fetchAll = async (req, res) => {
-  assert(req.user);
-  const caddies = await OrderCaddy.query()
-    .eager('[triggers, pair, referenceMarkets.exchange, triggerMarkets.exchange]')
-    .where('userId', req.user.id);
-
-  return res.status(200).json(caddies);
-};
-
-module.exports.fetchOne = async (req, res) => {
-  assert(req.user);
-  const id = req.params.id;
-  const caddy = await OrderCaddy.query()
-    .where({ id, userId: req.user.id })
+async function getCaddy(id, userId) {
+  return await OrderCaddy.query()
+    .where({ id, userId })
     .eager(`[
     triggers.[
       arbCycle.orders.[
@@ -29,6 +19,22 @@ module.exports.fetchOne = async (req, res) => {
       exchange,
       ]
     ]`).first();
+}
+
+module.exports.fetchAll = async (req, res) => {
+  assert(req.user);
+  const caddies = await OrderCaddy.query()
+    .eager('[triggers, pair, referenceMarkets.exchange, triggerMarkets.exchange]')
+    .where('userId', req.user.id);
+
+  return res.status(200).json(caddies);
+};
+
+module.exports.fetchOne = async (req, res) => {
+  assert(req.user);
+  const caddyId = req.params.id;
+  const userId = req.user.id;
+  const caddy = await getCaddy(caddyId, userId);
   return caddy ?  res.status(200).json(caddy) : res.status(404);
 };
 
@@ -63,4 +69,27 @@ module.exports.deleteOne = async (req, res) => {
     return res.status(500).json({ success: false });
   }
   return res.status(200).json({ success: true });
+};
+
+module.exports.patch = async (req, res) => {
+  const payload = req.body.caddy;
+  const caddyId = req.params.id;
+  const userId = req.user.id;
+  
+  const caddy = await OrderCaddy.query()
+    .where('id', caddyId).where('user_id', req.user.id)
+    .first();
+
+  if (!caddy) {
+    return res.status(404).send('Caddy not found');
+  }
+
+  const upsert = _.pick(payload, ['label', 'active', 'minProfitabilityPercent']);
+  
+  const success = await OrderCaddy.query()
+    .update(upsert).where('id', caddyId);
+    
+  const result = await getCaddy(caddyId, userId);
+
+  return res.status(200).json({ success: true, caddy: result });
 };
