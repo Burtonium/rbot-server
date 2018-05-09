@@ -1,15 +1,12 @@
 require('dotenv').config();
+const { knex } = require('../database/index');
 const Exchange = require('../models/exchange');
 const Ticker = require('../models/ticker');
+const ApiCall = require('../models/api_call');
 const _ = require('lodash');
 const { wait } = require('../utils');
 
-const exclusiveFilter = [
-  'independentreserve',
-  'bitstamp',
-  'bitfinex',
-  'idex'
-];
+var exclusiveFilter = [];
 
 const filtered = [
   'allcoin',
@@ -35,6 +32,8 @@ const individualTickersOnly = [
 
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
+  
+  const startTime = Date.now();
 
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
     tickers = await exchange.ccxt.fetchTickers();
@@ -50,18 +49,31 @@ const fetchTickers = async (exchange, tickerCallback) => {
 
     await Promise.all(promises);
   }
+  
+  const apiCall = { 
+    latency: Date.now() - startTime,
+    method: 'fetchTickers',
+    exchangeId: exchange.id
+  };
+  
+  try {
+    await ApiCall.query().insert(apiCall);
+  } catch (error) {
+    console.error("Error: ", error.message);
+  }
+  
   return tickers;
 };
 
 const insertTickers = async () => {
   const exchanges = await Exchange.query().eager('markets');
   const promises = exchanges
-    .filter(e => !exclusiveFilter.length || exclusiveFilter.includes(e.ccxtId))
+    .filter(e => exclusiveFilter.includes(e.ccxtId))
     .filter(e => !filtered.includes(e.ccxtId))
     .map(async e => {
       await e.ccxt.loadMarkets();
-
-      return fetchTickers(e, async (symbol, ticker) => {
+      
+      const result = fetchTickers(e, async (symbol, ticker) => {
         const market = e.markets.find(m => m.symbol === symbol);
         if (!market) {
           return false;
@@ -74,14 +86,21 @@ const insertTickers = async () => {
         insert.marketId = market.id;
         return Ticker.query().insert(insert);
       }).catch(e => console.error('Error updating ticker:', e.message));
+      
+      return result;
     });
   return Promise.all(promises).then(() => console.log('Finished inserting tickers...'));
 };
 
 (async () => {
   while(true) {
+    const results = await knex('exchanges').select('ccxt_id').whereIn('id', function() {
+      this.select('exchange_id').from('exchange_settings').where('enabled', true);
+    });
+    exclusiveFilter = results.map(a => a.ccxtId);
+    
     await insertTickers().catch(e => console.error(e.message));
-    await wait(1500);
+    await wait(process.env.TICKER_UPDATE_DELAY || 1500);
   }
 })().then(() => {
   process.exit(0);

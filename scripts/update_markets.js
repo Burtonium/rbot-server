@@ -9,7 +9,7 @@ const _ = require('lodash');
 (async () =>{
   for (let i = 0; i < ccxt.exchanges.length; i++) {
     const e = ccxt.exchanges[i];
-    console.log(`Loading ${e} markets (${i + 1} of ${ccxt.exchanges.length})`);
+    console.log(`\nLoading ${e} markets (${i + 1} of ${ccxt.exchanges.length})`);
     const exchange = new ccxt[e]();
 
     try {
