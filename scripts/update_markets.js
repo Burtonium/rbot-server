@@ -9,7 +9,7 @@ const _ = require('lodash');
 (async () =>{
   for (let i = 0; i < ccxt.exchanges.length; i++) {
     const e = ccxt.exchanges[i];
-    console.log(`Loading ${e} markets (${i + 1} of ${ccxt.exchanges.length})`);
+    console.log(`\n\nLoading ${e} markets (${i + 1} of ${ccxt.exchanges.length})`);
     const exchange = new ccxt[e]();
 
     try {
@@ -32,7 +32,11 @@ const _ = require('lodash');
               console.warn(`Warning: Unsupported pair ${market.base}/${market.quote}`);
             }
           }
-          return pair && Market.query().insert({ symbol: market.symbol, currencyPairId: pair.id, exchangeId }).catch(e => e);
+          if (pair) {
+            console.log(`${e}: inserting market ${market.symbol}`);
+            return Market.query().insert({ symbol: market.symbol, currencyPairId: pair.id, exchangeId }).catch(e => e);
+          }
+          return false; 
         }));
       }
     } catch (e) {

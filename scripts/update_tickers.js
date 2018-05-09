@@ -77,6 +77,10 @@ const insertTickers = async () => {
         if (!market) {
           return false;
         }
+        
+        if (symbol == 'TKA/ETH') {
+          console.log('TKA/ETH found in fetchTockers callback');
+        }
 
         const insert = _.pick(ticker, ['ask', 'askVolume', 'bid', 'bidVolume', 'timestamp']);
 
