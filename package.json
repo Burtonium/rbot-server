@@ -19,7 +19,7 @@
     "body-parser": "^1.18.2",
     "ccxt": "git+ssh://git@github.com/Burtonium/ccxt-private.git#rbot",
     "cors": "^2.8.4",
-    "dotenv": "^5.0.0",
+    "dotenv": "^5.0.1",
     "express": "^4.16.2",
     "express-async-errors": "^2.1.2",
     "helmet": "^3.10.0",
