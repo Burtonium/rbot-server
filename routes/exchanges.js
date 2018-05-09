@@ -59,8 +59,6 @@ module.exports.fetchAll = async (req, res, next) => {
     ) top_ten
     group by exchange_id
   `);
-    
-  console.log(latencies.rows);
   
   exchanges.forEach((e) => {
     const l = latencies.rows.find(l => l.exchange_id == e.id);

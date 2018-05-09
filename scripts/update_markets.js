@@ -32,10 +32,7 @@ const _ = require('lodash');
               console.warn(`Warning: Unsupported pair ${market.base}/${market.quote}`);
             }
           }
-          if (pair) {
-            return Market.query().insert({ symbol: market.symbol, currencyPairId: pair.id, exchangeId }).catch(e => e);
-          }
-          return false; 
+          return pair && Market.query().insert({ symbol: market.symbol, currencyPairId: pair.id, exchangeId }).catch(e => e);
         }));
       }
     } catch (e) {
