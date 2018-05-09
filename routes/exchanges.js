@@ -72,16 +72,6 @@ module.exports.fetchAll = async (req, res, next) => {
     }
   });
   
-  /*
-  latencies.rows.forEach((l) => {
-    const e = exchanges.find(e => e.id == l.exchange_id);
-    if (e) {
-      e.latency = parseInt(l.ave_latency);
-      console.log(e.latency);
-    }
-  });
-  */
-  
   const response = exchanges.map(flattenSettings);
   return res.status(200).json(response);
 };

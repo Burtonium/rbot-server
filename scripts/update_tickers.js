@@ -33,7 +33,6 @@ const individualTickersOnly = [
 const fetchTickers = async (exchange, tickerCallback) => {
   let tickers;
   
-  console.log("fetching tickers for " + exchange.name);
   const startTime = Date.now();
 
   if (exchange.has.fetchTickers && !individualTickersOnly.includes(exchange.ccxtId)) {
@@ -57,8 +56,10 @@ const fetchTickers = async (exchange, tickerCallback) => {
     exchangeId: exchange.id
   };
   
-  if (!(await ApiCall.query().insert(apiCall))) {
-    console.error("Error: Couldn't insert api call to database");
+  try {
+    await ApiCall.query().insert(apiCall);
+  } catch (error) {
+    console.error("Error: ", error.message);
   }
   
   return tickers;
@@ -76,10 +77,6 @@ const insertTickers = async () => {
         const market = e.markets.find(m => m.symbol === symbol);
         if (!market) {
           return false;
-        }
-        
-        if (symbol == 'TKA/ETH') {
-          console.log('TKA/ETH found in fetchTockers callback');
         }
 
         const insert = _.pick(ticker, ['ask', 'askVolume', 'bid', 'bidVolume', 'timestamp']);
