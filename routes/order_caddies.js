@@ -17,7 +17,11 @@ async function getCaddy(id, userId) {
     referenceMarkets.[
       tickers(latest),
       exchange,
-      ]
+    ],
+    triggerMarkets.[
+      exchange
+    ],
+    pair
     ]`).first();
 }
 
@@ -83,11 +87,14 @@ module.exports.patch = async (req, res) => {
   if (!caddy) {
     return res.status(404).send('Caddy not found');
   }
-
-  const upsert = _.pick(payload, ['label', 'active', 'minProfitabilityPercent']);
+  
+  const upsert = _.omit(payload, ['pair', 'createdAt', 'updatedAt']);
+  upsert.referenceMarkets.forEach((m, index, arr) =>
+    arr[index] = _.omit(m, ['pair', 'exchange', 'tickers'])
+  );
   
   const success = await OrderCaddy.query()
-    .update(upsert).where('id', caddyId);
+    .upsertGraph(upsert, { relate: true, unrelate: true });
     
   const result = await getCaddy(caddyId, userId);
 
