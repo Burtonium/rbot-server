@@ -22,7 +22,8 @@ async function getCaddy(id, userId) {
       exchange
     ],
     pair
-    ]`).first();
+    ]`).modifyEager('referenceMarkets', query => query.orderBy('id'))
+    .modifyEager('triggerMarkets', query => query.orderBy('id')).first();
 }
 
 module.exports.fetchAll = async (req, res) => {
