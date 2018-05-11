@@ -141,7 +141,6 @@ class Order extends Model {
   async renew(targetPrice, amount, settings) {
     const exchange = await this.$relatedQuery('exchange');
     exchange.userSettings = settings;
-    await this.cancel();
 
     const order = await exchange.createOrder({
       ..._.pick(this, ['side', 'type']),
@@ -150,13 +149,17 @@ class Order extends Model {
       limitPrice: targetPrice
     });
 
-    return Order.query().insert({
+    const result = Order.query().insert({
       userId: this.userId,
       marketId: this.marketId,
       status: 'open',
       amount,
       ..._.pick(order, [ 'orderId', 'type', 'side', 'limitPrice'])
     });
+    
+    await this.cancel();
+    
+    return result;
   }
 }
 
