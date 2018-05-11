@@ -15,7 +15,7 @@ module.exports.patch = async (req, res) => {
   const payload = req.body.exchange;
   const exchangeId = req.params.id;
   const exchange = await Exchange.query()
-    .where(Number.isInteger(+exchangeId) ? 'id' : 'ccxtId', exchangeId)
+    .where('id', exchangeId)
     .eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
@@ -66,7 +66,7 @@ module.exports.fetchAll = async (req, res, next) => {
       e.latency = parseInt(l.ave_latency);
       e.status = 'active';
     } else {
-      e.status = 'not active';
+      e.status = 'disabled';
     }
   });
   
