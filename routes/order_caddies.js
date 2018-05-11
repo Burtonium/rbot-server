@@ -82,7 +82,7 @@ module.exports.patch = async (req, res) => {
   const userId = req.user.id;
   
   const caddy = await OrderCaddy.query()
-    .where('id', caddyId).where('user_id', req.user.id)
+    .where('id', caddyId).andWhere('user_id', req.user.id)
     .first();
 
   if (!caddy) {
