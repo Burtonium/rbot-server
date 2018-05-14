@@ -7,7 +7,7 @@ const { raw } = require('objection');
 const ccxt = require('ccxt');
 
 const flattenSettings = e => {
-  let exchange = _.omit(e, ['settings']);
+  const exchange = _.omit(e, ['settings']);
   Object.assign(exchange, e.settings[0] && _.omit(e.settings[0].toJSON(), ['id', 'exchangeId']));
   return exchange;
 };
@@ -25,7 +25,7 @@ module.exports.patch = async (req, res) => {
     return res.status(404).send('Exchange not found');
   }
 
-  const upsert = _.pick(payload, ['secret', 'key', 'uid', 'password', 'enabled']);
+  const upsert = _.pick(payload, ['secret', 'apiKey', 'uid', 'password', 'enabled']);
 
   if (exchange.settings.length > 0) {
     const settings = exchange.settings[0];
