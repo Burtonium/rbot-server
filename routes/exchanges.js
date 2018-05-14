@@ -4,6 +4,7 @@ const assert = require('assert');
 const { knex } = require('../database/index');
 const _ = require('lodash');
 const { raw } = require('objection');
+const ccxt = require('ccxt');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
@@ -24,7 +25,7 @@ module.exports.patch = async (req, res) => {
     return res.status(404).send('Exchange not found');
   }
 
-  const upsert = _.pick(payload, ['secret', 'apiKey', 'uid', 'password', 'enabled']);
+  const upsert = _.pick(payload, ['secret', 'key', 'uid', 'password', 'enabled']);
 
   if (exchange.settings.length > 0) {
     const settings = exchange.settings[0];
@@ -68,8 +69,33 @@ module.exports.fetchAll = async (req, res, next) => {
     } else {
       e.status = 'disabled';
     }
+    
+    e.requires = new ccxt[e.ccxtId]().requiredCredentials;
   });
   
   const response = exchanges.map(flattenSettings);
   return res.status(200).json(response);
 };
+
+module.exports.fetchBalances = async (req, res, next) => {
+  const exchange = await Exchange.query()
+    .where('id', req.params.id)
+    .eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id))
+    .first();
+  
+  const ccxtObj = new ccxt[exchange.ccxtId]({
+    ..._.omit(exchange.settings, ['key']),
+    apiKey: exchange.settings.key,
+  });
+  
+  const result = { success: false };
+  try {
+    result.data = await ccxtObj.fetchBalance();
+    result.success = true;
+  } catch(e) {
+    console.error("Error: ", e.message);
+  }
+  
+  return res.status(200).json(result);
+}
