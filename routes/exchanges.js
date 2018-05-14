@@ -4,6 +4,7 @@ const assert = require('assert');
 const { knex } = require('../database/index');
 const _ = require('lodash');
 const { raw } = require('objection');
+const ccxt = require('ccxt');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
@@ -15,7 +16,7 @@ module.exports.patch = async (req, res) => {
   const payload = req.body.exchange;
   const exchangeId = req.params.id;
   const exchange = await Exchange.query()
-    .where(Number.isInteger(+exchangeId) ? 'id' : 'ccxtId', exchangeId)
+    .where('id', exchangeId)
     .eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
@@ -60,16 +61,40 @@ module.exports.fetchAll = async (req, res, next) => {
     group by exchange_id
   `);
   
-  exchanges.forEach((e) => {
+  exchanges.forEach((e, index, arr) => {
+    e.loadRequirements();
+    
     const l = latencies.rows.find(l => l.exchange_id == e.id);
     if (l) {
       e.latency = parseInt(l.ave_latency);
       e.status = 'active';
     } else {
-      e.status = 'not active';
+      e.status = 'disabled';
     }
+    
+    arr[index] = Object.assign(_.omit(e, ['settings']),
+      _.omit(e.settings[0], ['id', 'exchangeId']));
   });
   
-  const response = exchanges.map(flattenSettings);
-  return res.status(200).json(response);
+  return res.status(200).json(exchanges);
 };
+
+module.exports.fetchBalances = async (req, res, next) => {
+  const exchange = await Exchange.query()
+    .where('id', req.params.id)
+    .eager('settings')
+    .modifyEager('settings', query => query.where('userId', req.user.id))
+    .first();
+    
+  exchange.ccxt.userSettings(exchange.settings);
+  
+  const result = { success: false };
+  try {
+    result.data = await exchange.ccxt.fetchBalance();
+    result.success = true;
+  } catch(e) {
+    console.error("Error: ", e.message);
+  }
+  
+  return res.status(200).json(result);
+}
