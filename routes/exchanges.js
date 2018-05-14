@@ -7,7 +7,7 @@ const { raw } = require('objection');
 const ccxt = require('ccxt');
 
 const flattenSettings = e => {
-  const exchange = _.omit(e, ['settings']);
+  let exchange = _.omit(e, ['settings']);
   Object.assign(exchange, e.settings[0] && _.omit(e.settings[0].toJSON(), ['id', 'exchangeId']));
   return exchange;
 };
@@ -61,7 +61,9 @@ module.exports.fetchAll = async (req, res, next) => {
     group by exchange_id
   `);
   
-  exchanges.forEach((e) => {
+  exchanges.forEach((e, index, arr) => {
+    e = e.toJSON();
+    
     const l = latencies.rows.find(l => l.exchange_id == e.id);
     if (l) {
       e.latency = parseInt(l.ave_latency);
@@ -70,11 +72,13 @@ module.exports.fetchAll = async (req, res, next) => {
       e.status = 'disabled';
     }
     
-    e.requires = new ccxt[e.ccxtId]().requiredCredentials;
+    e = Object.assign(_.omit(e, ['settings']),
+      _.omit(e.settings[0], ['id', 'exchangeId']));
+    
+    arr[index] = e;
   });
   
-  const response = exchanges.map(flattenSettings);
-  return res.status(200).json(response);
+  return res.status(200).json(exchanges);
 };
 
 module.exports.fetchBalances = async (req, res, next) => {
@@ -83,15 +87,12 @@ module.exports.fetchBalances = async (req, res, next) => {
     .eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
-  
-  const ccxtObj = new ccxt[exchange.ccxtId]({
-    ..._.omit(exchange.settings, ['key']),
-    apiKey: exchange.settings.key,
-  });
+    
+  exchange.ccxt.userSettings(exchange.settings);
   
   const result = { success: false };
   try {
-    result.data = await ccxtObj.fetchBalance();
+    result.data = await exchange.ccxt.fetchBalance();
     result.success = true;
   } catch(e) {
     console.error("Error: ", e.message);

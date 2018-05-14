@@ -12,6 +12,14 @@ class Exchange extends Model {
   static get tableName() {
     return 'exchanges';
   }
+  
+  static get virtualAttributes() {
+    return ['requires'];
+  }
+  
+  get requires() {
+    return this.ccxt.requiredCredentials;
+  }
 
   static get timestamp() {
     return false;
