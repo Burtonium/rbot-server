@@ -62,7 +62,7 @@ module.exports.fetchAll = async (req, res, next) => {
   `);
   
   exchanges.forEach((e, index, arr) => {
-    e = e.toJSON();
+    e.loadRequirements();
     
     const l = latencies.rows.find(l => l.exchange_id == e.id);
     if (l) {
@@ -72,10 +72,8 @@ module.exports.fetchAll = async (req, res, next) => {
       e.status = 'disabled';
     }
     
-    e = Object.assign(_.omit(e, ['settings']),
+    arr[index] = Object.assign(_.omit(e, ['settings']),
       _.omit(e.settings[0], ['id', 'exchangeId']));
-    
-    arr[index] = e;
   });
   
   return res.status(200).json(exchanges);

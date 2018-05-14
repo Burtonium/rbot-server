@@ -13,12 +13,9 @@ class Exchange extends Model {
     return 'exchanges';
   }
   
-  static get virtualAttributes() {
-    return ['requires'];
-  }
-  
-  get requires() {
-    return this.ccxt.requiredCredentials;
+  loadRequirements() {
+    this.lazyLoadCcxt();
+    this.requires = this.instance.requiredCredentials;
   }
 
   static get timestamp() {
