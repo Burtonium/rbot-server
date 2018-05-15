@@ -1,10 +1,7 @@
 const Exchange = require('../models/exchange');
 const ExchangeSettings = require('../models/exchange_settings');
-const assert = require('assert');
 const { knex } = require('../database/index');
 const _ = require('lodash');
-const { raw } = require('objection');
-const ccxt = require('ccxt');
 
 const flattenSettings = e => {
   const exchange = _.omit(e, ['settings']);
@@ -47,7 +44,7 @@ module.exports.patch = async (req, res) => {
 module.exports.fetchAll = async (req, res, next) => {
   const exchanges = await Exchange.query().eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id));
-    
+
   const latencies = await knex.raw(`
     select exchange_id, avg(latency) as ave_latency
     from (
@@ -60,10 +57,10 @@ module.exports.fetchAll = async (req, res, next) => {
     ) top_ten
     group by exchange_id
   `);
-  
+
   exchanges.forEach((e, index, arr) => {
     e.loadRequirements();
-    
+
     const l = latencies.rows.find(l => l.exchange_id == e.id);
     if (l) {
       e.latency = parseInt(l.ave_latency);
@@ -71,11 +68,11 @@ module.exports.fetchAll = async (req, res, next) => {
     } else {
       e.status = 'disabled';
     }
-    
+
     arr[index] = Object.assign(_.omit(e, ['settings']),
       _.omit(e.settings[0], ['id', 'exchangeId']));
   });
-  
+
   return res.status(200).json(exchanges);
 };
 
@@ -85,12 +82,12 @@ module.exports.fetchBalances = async (req, res, next) => {
     .eager('settings')
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
-    
+
   exchange.userSettings = exchange.settings[0];
 
   const result = { success: false };
   try {
-    result.data = await exchange.ccxt.fetchBalance();
+    result.balances = await exchange.ccxt.fetchBalance();
     result.success = true;
   } catch(e) {
     console.error("Error: ", e.message);

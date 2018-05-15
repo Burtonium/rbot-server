@@ -12,7 +12,7 @@ class Exchange extends Model {
   static get tableName() {
     return 'exchanges';
   }
-  
+
   loadRequirements() {
     this.lazyLoadCcxt();
     this.requires = this.instance.requiredCredentials;
