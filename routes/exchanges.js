@@ -86,8 +86,8 @@ module.exports.fetchBalances = async (req, res, next) => {
     .modifyEager('settings', query => query.where('userId', req.user.id))
     .first();
     
-  exchange.ccxt.userSettings(exchange.settings);
-  
+  exchange.userSettings = exchange.settings[0];
+
   const result = { success: false };
   try {
     result.data = await exchange.ccxt.fetchBalance();
@@ -95,6 +95,5 @@ module.exports.fetchBalances = async (req, res, next) => {
   } catch(e) {
     console.error("Error: ", e.message);
   }
-  
   return res.status(200).json(result);
-}
+};

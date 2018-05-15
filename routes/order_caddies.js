@@ -23,15 +23,16 @@ async function getCaddy(id, userId) {
     ],
     pair
     ]`).modifyEager('referenceMarkets', query => query.orderBy('id'))
-    .modifyEager('triggerMarkets', query => query.orderBy('id')).first();
+    .modifyEager('triggerMarkets', query => query.orderBy('id'))
+    .modifyEager('triggers', query => query.orderBy('updatedAt', 'desc') && query.limit(100)).first();
 }
 
 module.exports.fetchAll = async (req, res) => {
   assert(req.user);
   const caddies = await OrderCaddy.query()
     .eager('[triggers, pair, referenceMarkets.exchange, triggerMarkets.exchange]')
+    .modifyEager('triggers', q => q.limit(100))
     .where('userId', req.user.id);
-
   return res.status(200).json(caddies);
 };
 

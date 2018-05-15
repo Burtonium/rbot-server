@@ -85,10 +85,7 @@ class Exchange extends Model {
 
   set userSettings(settings) {
     this.lazyLoadCcxt();
-    this.instance.apiKey = settings.apiKey;
-    this.instance.secret = settings.secret;
-    this.instance.uid = settings.uid;
-    this.instance.password = settings.password;
+    Object.assign(this.instance, _.pick(settings, ['apiKey', 'secret', 'uid', 'password']));
   }
 
   get has() {
