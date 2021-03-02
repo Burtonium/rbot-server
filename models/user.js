@@ -2,6 +2,7 @@ const { Model } = require('../database');
 const Password = require('objection-password')({ allowEmptyPassword: true });
 const _ = require('lodash');
 const sgMail = require('@sendgrid/mail');
+
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 class User extends Password(Model) {

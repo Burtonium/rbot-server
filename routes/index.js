@@ -6,15 +6,15 @@ const markets = require('./markets');
 const router = require('express').Router();
 
 router.post('/authenticate', auth.authenticate);
-router.get('/caddies', auth.verifyToken, caddies.fetchAll);
-router.get('/caddies/:id', auth.verifyToken, caddies.fetchOne);
-router.delete('/caddies/:id', auth.verifyToken, caddies.deleteOne);
-router.post('/caddies', auth.verifyToken, caddies.create);
-router.patch('/caddies/:id', auth.verifyToken, caddies.patch);
-router.get('/exchanges', auth.verifyToken, exchanges.fetchAll);
-router.get('/exchanges/:id/balances', auth.verifyToken, exchanges.fetchBalances);
-router.patch('/exchanges/:id', auth.verifyToken, exchanges.patch);
-router.get('/markets', auth.verifyToken, markets.fetchAll);
+router.get('/caddies', caddies.fetchAll);
+router.get('/caddies/:id', caddies.fetchOne);
+router.delete('/caddies/:id', caddies.deleteOne);
+router.post('/caddies', caddies.create);
+router.patch('/caddies/:id', caddies.patch);
+router.get('/exchanges', exchanges.fetchAll);
+router.get('/exchanges/:id/balances', exchanges.fetchBalances);
+router.patch('/exchanges/:id', exchanges.patch);
+router.get('/markets', markets.fetchAll);
 router.get('/pairs', pairs.fetchAll);
 
 module.exports = router;

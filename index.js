@@ -7,7 +7,7 @@ const helmet = require('helmet');
 require('express-async-errors');
 const routes = require('./routes');
 
-const port = process.env.PORT || 8081;
+const port = process.env.PORT || 4000;
 const app = express();
 // const production = process.env.NODE_ENV === 'production';
 

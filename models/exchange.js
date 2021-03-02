@@ -2,11 +2,11 @@ const { Model } = require('../database');
 const ccxt = require('ccxt');
 const _ = require('lodash');
 const proxies = (process.env.PROXIES || '').split(',').filter(p => !!p).map(p => `http://${p}:8080/`);
-const store = require('node-persist');
+var LRU = require("lru-cache")
 const assert = require('assert');
 const { precisionRound, wait } = require('../utils');
 
-store.init();
+const cache = new LRU();
 
 class Exchange extends Model {
   static get tableName() {
@@ -65,10 +65,10 @@ class Exchange extends Model {
         get(obj, prop) {
           let stagger = null;
           if (/private/.exec(prop.toString()) && obj[prop]) {
-            let nextCallAllowedAt = store.getItemSync(ccxtId + '-privatecall');
+            let nextCallAllowedAt = cache.get(ccxtId + '-privatecall');
             const now = new Date().getTime();
             nextCallAllowedAt = nextCallAllowedAt > now ?  nextCallAllowedAt + 1010 : now + 1010;
-            store.setItemSync(ccxtId + '-privatecall', nextCallAllowedAt);
+            cache.set(ccxtId + '-privatecall', nextCallAllowedAt);
             if (nextCallAllowedAt) {
               stagger = async(...args) => {
                 const millisToWait = new Date(nextCallAllowedAt).getTime() - new Date().getTime();
@@ -95,9 +95,9 @@ class Exchange extends Model {
 
   cycleProxy() {
     if (proxies.length) {
-      const index = store.getItemSync(this.ccxtId) || 0;
+      const index = cache.get(this.ccxtId) || 0;
       this.instance.proxy = proxies[index % proxies.length];
-      store.setItemSync(this.ccxtId, index + 1);
+      cache.set(this.ccxtId, index + 1);
     }
   }
 

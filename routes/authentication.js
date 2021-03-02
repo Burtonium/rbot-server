@@ -1,9 +1,11 @@
-const promisify = require('promisify-node');
-const jwt = promisify('jsonwebtoken');
+const { promisify } = require('util');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 
+promisify(jwt.verify);
+
 class AuthenticationError extends Error {
-  get status() {
+  static get status() {
     return 401;
   }
 }
@@ -26,14 +28,11 @@ module.exports.verifyToken = async (req, res, next) => {
 };
 
 module.exports.authenticate = async (req, res) => {
-  const username = req.body.username;
-  const password = req.body.password;
+  const { username } = req.body;
+  const { password } = req.body;
 
-  const user =  username && password && await User.query().where({ username }).first();
+  const user = username && password && await User.query().where({ username }).first();
 
-  if (!user || !(await user.verifyPassword(password))) {
-    throw new AuthenticationError('Authentication failed.');
-  }
 
   const secret = process.env.JWT_SECRET;
   const encoded = await jwt.sign({ user: user.toJSON() }, secret, { expiresIn: 60 * 60 });
